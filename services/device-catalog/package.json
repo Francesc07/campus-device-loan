@@ -2,15 +2,19 @@
   "name": "device-catalog",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/src/functions/*.js",
+  "main": "dist/API/functions/*.js",
+  
+
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
     "clean": "rimraf dist",
     "prestart": "npm run clean && npm run build",
-    "start": "func start",
+    "start": "func start --typescript ",
     "seed": "ts-node ./tools/seed.ts",
     "test": "echo \"No tests yet...\""
+     
+
   },
   "dependencies": {
     "@azure/cosmos": "^4.6.0",
