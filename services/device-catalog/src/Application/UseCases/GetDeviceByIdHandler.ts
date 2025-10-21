@@ -1,18 +1,13 @@
 import { IDeviceRepository } from "../Interfaces/IDeviceRepository";
+import { DeviceResponseDto } from "../DTOs/DeviceResponseDto";
 
-/**
- * Handles retrieval of a single device by its ID.
- * Throws an error if the device does not exist.
- */
 export class GetDeviceByIdHandler {
-  constructor(private readonly deviceRepo: IDeviceRepository) {}
+  constructor(private readonly repo: IDeviceRepository) {}
 
-  async execute(id: string) {
+  async execute(id: string): Promise<DeviceResponseDto> {
     if (!id) throw new Error("Device ID is required.");
-
-    const device = await this.deviceRepo.getById(id);
-    if (!device) throw new Error("Device not found.");
-
-    return device;
+    const device = await this.repo.getById(id);
+    if (!device) throw new Error(`Device with ID ${id} not found.`);
+    return device as DeviceResponseDto;
   }
 }

@@ -1,13 +1,7 @@
 import { CosmosClient } from "@azure/cosmos";
 import { Device } from "../../Domain/Entities/Device";
 import { IDeviceRepository } from "../../Application/Interfaces/IDeviceRepository";
-import { DeviceCategory } from "../../Domain/Enums/DeviceCategory";
-import { DeviceBrand } from "../../Domain/Enums/DeviceBrand";
 
-/**
- * Cosmos DB implementation of the device repository interface.
- * Handles all persistence logic for Device entities.
- */
 export class CosmosDeviceRepository implements IDeviceRepository {
   private container;
 
@@ -22,34 +16,37 @@ export class CosmosDeviceRepository implements IDeviceRepository {
 
   async listAll(): Promise<Device[]> {
     const { resources } = await this.container.items.query("SELECT * FROM c").fetchAll();
-
-    return resources.map((item: any) =>
-      new Device(
-        item.id,
-        (item.brand as DeviceBrand) || DeviceBrand.Other,
-        item.model,
-        (item.category as DeviceCategory) || DeviceCategory.Other,
-        item.description || "No description provided",
-        item.availableCount ?? 0
-      )
-    );
+    return resources;
   }
 
   async getById(id: string): Promise<Device | null> {
     try {
       const { resource } = await this.container.item(id, id).read();
-      if (!resource) return null;
-
-      return new Device(
-        resource.id,
-        (resource.brand as DeviceBrand) || DeviceBrand.Other,
-        resource.model,
-        (resource.category as DeviceCategory) || DeviceCategory.Other,
-        resource.description || "No description provided",
-        resource.availableCount ?? 0
-      );
+      return resource || null;
     } catch {
       return null;
+    }
+  }
+
+  async create(device: Device): Promise<Device> {
+    const { resource } = await this.container.items.create(device);
+    return resource as Device;
+  }
+
+  async update(id: string, updates: Partial<Device>): Promise<Device> {
+    const existing = await this.getById(id);
+    if (!existing) throw new Error("Device not found.");
+    const updated = { ...existing, ...updates };
+    const { resource } = await this.container.item(id, id).replace(updated);
+    return resource as Device;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      await this.container.item(id, id).delete();
+      return true;
+    } catch {
+      return false;
     }
   }
 }
