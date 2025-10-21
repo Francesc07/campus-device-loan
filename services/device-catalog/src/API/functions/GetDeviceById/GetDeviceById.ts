@@ -1,6 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
-import { CosmosDeviceRepository } from "../../Infrastructure/Persistence/CosmosDeviceRepository";
-import { GetDeviceByIdHandler } from "../../Application/UseCases/GetDeviceByIdHandler";
+import { CosmosDeviceRepository } from "../../../Infrastructure/Persistence/CosmosDeviceRepository";
+import { GetDeviceByIdHandler } from "../../../Application/UseCases/GetDeviceByIdHandler";
 
 /**
  * Azure Function endpoint for retrieving a single device by ID.

@@ -1,0 +1,19 @@
+{
+  "scriptFile": "../../../../dist/API/functions/GetDeviceById.js",
+  "entryPoint": "GetDeviceById",
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["get"],
+      "route": "GetDeviceById/{id}"
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "$return"
+    }
+  ]
+}
