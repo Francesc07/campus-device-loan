@@ -2,9 +2,7 @@
   "name": "device-catalog",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/API/functions/*.js",
-  
-
+  "main": "dist/src/API/functions/*.js",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
@@ -13,15 +11,13 @@
     "start": "func start --typescript ",
     "seed": "ts-node ./tools/seed.ts",
     "test": "echo \"No tests yet...\""
-     
-
   },
   "dependencies": {
     "@azure/cosmos": "^4.6.0",
     "@azure/functions": "^4.0.0"
   },
   "devDependencies": {
-    "@types/node": "18.x",
+    "@types/node": "^18.19.130",
     "azure-functions-core-tools": "^4.x",
     "rimraf": "^5.0.0",
     "ts-node": "^10.9.2",

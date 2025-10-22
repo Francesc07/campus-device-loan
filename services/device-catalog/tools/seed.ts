@@ -10,7 +10,7 @@ import { DeviceBrand } from "../src/Domain/Enums/DeviceBrand";
 // If env vars aren't set (ts-node run), try loading them from local.settings.json
 try {
   const fs = require("fs");
-  const path = require("path");
+  const path = require("path");  
   const localPath = path.join(process.cwd(), "local.settings.json");
   if (fs.existsSync(localPath)) {
     const raw = fs.readFileSync(localPath, "utf8");
@@ -27,7 +27,7 @@ try {
 const endpoint = process.env.COSMOS_ENDPOINT;
 const key = process.env.COSMOS_KEY;
 const dbName = process.env.COSMOS_DB;
-const containerName = process.env.COSMOS_CONTAINER;
+const containerName = process.env.COSMOS_CONTAINER || "";
 
 if (!endpoint || !key || !dbName || !containerName) {
   console.error("Missing Cosmos configuration. Make sure COSMOS_ENDPOINT, COSMOS_KEY, COSMOS_DB and COSMOS_CONTAINER are set in environment or local.settings.json.");
