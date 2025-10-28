@@ -14,7 +14,7 @@ export class UpdateDeviceHandler {
   async execute(id: string, updates: UpdateDeviceDto): Promise<DeviceResponseDto> {
     if (!id) throw new Error("Device ID is required for update.");
 
-    // 🔁 Map plain strings to Domain enums
+    // Map plain strings to Domain enums and include new fields
     const mappedUpdates: any = {
       ...updates,
       ...(updates.brand && { brand: updates.brand as DeviceBrand }),
@@ -22,6 +22,20 @@ export class UpdateDeviceHandler {
     };
 
     const updated = await this.repo.update(id, mappedUpdates);
-    return updated as DeviceResponseDto;
+    return this.mapToResponseDto(updated);
+  }
+
+  private mapToResponseDto(device: any): DeviceResponseDto {
+    return {
+      id: device.id,
+      brand: device.brand,
+      model: device.model,
+      category: device.category,
+      description: device.description,
+      availableCount: device.availableCount,
+      maxDeviceCount: device.maxDeviceCount,
+      imageUrl: device.imageUrl,
+      fileUrl: device.fileUrl
+    };
   }
 }

@@ -16,10 +16,27 @@ export class CreateDeviceHandler {
       input.model,
       input.category as DeviceCategory,
       input.description,
-      input.availableCount
+      input.availableCount,
+      input.maxDeviceCount,
+      input.imageUrl,
+      input.fileUrl
     );
 
     const created = await this.repo.create(device);
-    return created as DeviceResponseDto;
+    return this.mapToResponseDto(created);
+  }
+
+  private mapToResponseDto(device: Device): DeviceResponseDto {
+    return {
+      id: device.id,
+      brand: device.brand,
+      model: device.model,
+      category: device.category,
+      description: device.description,
+      availableCount: device.availableCount,
+      maxDeviceCount: device.maxDeviceCount,
+      imageUrl: device.imageUrl,
+      fileUrl: device.fileUrl
+    };
   }
 }

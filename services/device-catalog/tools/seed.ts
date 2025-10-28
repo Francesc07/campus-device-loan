@@ -53,6 +53,9 @@ async function main() {
       category: DeviceCategory.Laptop,
       description: "Business-grade laptop with 14-inch display, Intel i7 processor, and 16GB RAM.",
       availableCount: 5,
+      maxDeviceCount: 10,
+      imageUrl: "https://example.com/images/dell-latitude-5430.jpg",
+      fileUrl: "https://example.com/specs/dell-latitude-5430-specs.pdf"
     },
     {
       id: "d2",
@@ -61,6 +64,9 @@ async function main() {
       category: DeviceCategory.Tablet,
       description: "Portable tablet featuring the A14 Bionic chip, USB-C, and 10.9-inch Liquid Retina display.",
       availableCount: 3,
+      maxDeviceCount: 8,
+      imageUrl: "https://example.com/images/ipad-10th-gen.jpg",
+      fileUrl: "https://example.com/specs/ipad-10th-gen-specs.pdf"
     },
     {
       id: "d3",
@@ -69,6 +75,9 @@ async function main() {
       category: DeviceCategory.Camera,
       description: "Compact mirrorless camera with 24.1MP sensor, dual-pixel autofocus, and 4K video support.",
       availableCount: 2,
+      maxDeviceCount: 5,
+      imageUrl: "https://example.com/images/canon-eos-m50.jpg",
+      fileUrl: "https://example.com/specs/canon-eos-m50-specs.pdf"
     },
     {
       id: "d4",
@@ -77,6 +86,9 @@ async function main() {
       category: DeviceCategory.Laptop,
       description: "Lightweight business laptop with 11th Gen Intel CPU, 512GB SSD, and robust security features.",
       availableCount: 4,
+      maxDeviceCount: 12,
+      imageUrl: "https://example.com/images/hp-elitebook-840-g8.jpg",
+      fileUrl: "https://example.com/specs/hp-elitebook-840-g8-specs.pdf"
     },
     {
       id: "d5",
@@ -85,6 +97,8 @@ async function main() {
       category: DeviceCategory.Accessory,
       description: "Full HD 1080p webcam with stereo mics and automatic light correction for high-quality calls.",
       availableCount: 6,
+      maxDeviceCount: 15,
+      imageUrl: "https://example.com/images/logitech-c920.jpg"
     },
     {
       id: "d6",
@@ -93,6 +107,9 @@ async function main() {
       category: DeviceCategory.Accessory,
       description: "Wireless noise-cancelling headphones with adaptive sound control and 30-hour battery life.",
       availableCount: 5,
+      maxDeviceCount: 10,
+      imageUrl: "https://example.com/images/sony-wh-1000xm5.jpg",
+      fileUrl: "https://example.com/specs/sony-wh-1000xm5-specs.pdf"
     },
   ];
 

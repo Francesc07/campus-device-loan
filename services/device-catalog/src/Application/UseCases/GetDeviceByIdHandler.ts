@@ -8,6 +8,20 @@ export class GetDeviceByIdHandler {
     if (!id) throw new Error("Device ID is required.");
     const device = await this.repo.getById(id);
     if (!device) throw new Error(`Device with ID ${id} not found.`);
-    return device as DeviceResponseDto;
+    return this.mapToResponseDto(device);
+  }
+
+  private mapToResponseDto(device: any): DeviceResponseDto {
+    return {
+      id: device.id,
+      brand: device.brand,
+      model: device.model,
+      category: device.category,
+      description: device.description,
+      availableCount: device.availableCount,
+      maxDeviceCount: device.maxDeviceCount,
+      imageUrl: device.imageUrl,
+      fileUrl: device.fileUrl
+    };
   }
 }
