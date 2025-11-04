@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { CosmosDeviceRepository } from "../../Infrastructure/Persistence/CosmosDeviceRepository";
 import { ErrorResponseDto } from "../../Application/DTOs/ErrorResponseDto";
+import { addCorsHeaders, handlePreflightRequest } from "../../utils/corsUtils";
 
 /**
  * Azure Function to handle file uploads for device assets (images and files).
@@ -17,6 +18,13 @@ import { ErrorResponseDto } from "../../Application/DTOs/ErrorResponseDto";
  */
 export async function uploadAssetHttp(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   context.log(`HTTP function processed request for url "${request.url}"`);
+  
+  const origin = request.headers.get("origin");
+
+  // Handle preflight OPTIONS request
+  if (request.method === "OPTIONS") {
+    return handlePreflightRequest(origin);
+  }
 
   try {
     // Get the form data
@@ -31,10 +39,10 @@ export async function uploadAssetHttp(request: HttpRequest, context: InvocationC
         message: "Invalid file format. Please upload a binary file.",
         timestamp: new Date().toISOString()
       };
-      return {
+      return addCorsHeaders({
         status: 400,
         jsonBody: error
-      };
+      }, origin);
     }
     
     const file = fileEntry as any; // Use any to avoid type conflicts between different File implementations
@@ -46,10 +54,10 @@ export async function uploadAssetHttp(request: HttpRequest, context: InvocationC
         message: "No file provided. Please include a file in the 'file' field of the form data.",
         timestamp: new Date().toISOString()
       };
-      return {
+      return addCorsHeaders({
         status: 400,
         jsonBody: error
-      };
+      }, origin);
     }
 
     // Validate file size (max 10MB)
@@ -61,10 +69,10 @@ export async function uploadAssetHttp(request: HttpRequest, context: InvocationC
         message: `File size too large. Maximum size is ${maxSize / 1024 / 1024}MB.`,
         timestamp: new Date().toISOString()
       };
-      return {
+      return addCorsHeaders({
         status: 400,
         jsonBody: error
-      };
+      }, origin);
     }
 
     // Validate file type
@@ -81,10 +89,10 @@ export async function uploadAssetHttp(request: HttpRequest, context: InvocationC
         message: `File type not allowed. Supported types: ${allowedTypes.join(', ')}`,
         timestamp: new Date().toISOString()
       };
-      return {
+      return addCorsHeaders({
         status: 400,
         jsonBody: error
-      };
+      }, origin);
     }
 
     // Convert file to buffer
@@ -95,7 +103,7 @@ export async function uploadAssetHttp(request: HttpRequest, context: InvocationC
     const repository = new CosmosDeviceRepository();
     const assetUrl = await repository.uploadAsset(buffer, file.name, file.type);
 
-    return {
+    return addCorsHeaders({
       status: 200,
       jsonBody: {
         url: assetUrl,
@@ -103,7 +111,7 @@ export async function uploadAssetHttp(request: HttpRequest, context: InvocationC
         contentType: file.type,
         size: file.size
       }
-    };
+    }, origin);
 
   } catch (error) {
     context.error('Error uploading asset:', error);
@@ -115,15 +123,15 @@ export async function uploadAssetHttp(request: HttpRequest, context: InvocationC
       timestamp: new Date().toISOString()
     };
     
-    return {
+    return addCorsHeaders({
       status: 500,
       jsonBody: errorResponse
-    };
+    }, origin);
   }
 }
 
 app.http("upload-asset", {
-  methods: ["POST"],
+  methods: ["POST", "OPTIONS"],
   authLevel: "anonymous",
   route: "upload-asset",
   handler: uploadAssetHttp,

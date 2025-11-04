@@ -5,8 +5,15 @@ import { Device } from "../../Domain/Entities/Device";
 import { DeviceBrand } from "../../Domain/Enums/DeviceBrand";
 import { DeviceCategory } from "../../Domain/Enums/DeviceCategory";
 import { randomUUID } from "crypto";
+import { addCorsHeaders, handlePreflightRequest } from "../../utils/corsUtils";
 
 export async function createDevice(req: HttpRequest, ctx: InvocationContext): Promise<HttpResponseInit> {
+  const origin = req.headers.get("origin");
+
+  // Handle preflight OPTIONS request
+  if (req.method === "OPTIONS") {
+    return handlePreflightRequest(origin);
+  }
   try {
     const repo = new CosmosDeviceRepository();
 
@@ -22,7 +29,10 @@ export async function createDevice(req: HttpRequest, ctx: InvocationContext): Pr
     const specFile = form.get("file") as unknown as File | null;
 
     if (!brand || !model || !category || isNaN(availableCount) || isNaN(maxDeviceCount)) {
-      return { status: 400, jsonBody: { error: "Missing required fields" } };
+      return addCorsHeaders({
+        status: 400, 
+        jsonBody: { error: "Missing required fields" }
+      }, origin);
     }
 
     // Upload image and file (if any)
@@ -53,15 +63,23 @@ export async function createDevice(req: HttpRequest, ctx: InvocationContext): Pr
     await repo.create(device);
 
     ctx.log(`📦 Device created: ${device.model}`);
-    return { status: 201, jsonBody: { message: "Device created successfully", device } };
+    
+    return addCorsHeaders({
+      status: 201, 
+      jsonBody: { message: "Device created successfully", device }
+    }, origin);
   } catch (e: any) {
     ctx.error(`Error creating device: ${e.message}`);
-    return { status: 500, jsonBody: { error: e.message } };
+    
+    return addCorsHeaders({
+      status: 500, 
+      jsonBody: { error: e.message }
+    }, origin);
   }
 }
 
 app.http("create-device-http", {
-  methods: ["POST"],
+  methods: ["POST", "OPTIONS"],
   route: "devices/create",
   authLevel: "anonymous",
   handler: createDevice
