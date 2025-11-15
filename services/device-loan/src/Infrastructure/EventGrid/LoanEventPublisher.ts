@@ -1,76 +1,63 @@
 import { EventGridPublisherClient, AzureKeyCredential } from "@azure/eventgrid";
-import { Loan } from "../../Domain/Entities/Loan";
+import { ILoanEventPublisher } from "../../Application/Interfaces/ILoanEventPublisher";
+import { LoanRecord } from "../../Domain/Entities/LoanRecord";
 
-/**
- * Publishes loan events to Event Grid
- * Events: Loan.Created, Loan.Cancelled
- * Subscribers: Reservation Service, Catalog Service
- */
-export class LoanEventPublisher {
-  private client: EventGridPublisherClient<"EventGrid">;
- 
+export class LoanEventPublisher implements ILoanEventPublisher {
+  private client: EventGridPublisherClient<any>;
 
   constructor() {
-    const endpoint = process.env.EVENTGRID_TOPIC_ENDPOINT;
-    const key = process.env.EVENTGRID_TOPIC_KEY;
+    const endpoint = process.env.EVENTGRID_TOPIC_ENDPOINT!;
+    const key = process.env.EVENTGRID_TOPIC_KEY!;
 
-    if (endpoint && key) {
-      this.client = new EventGridPublisherClient(
-        endpoint,
-        "EventGrid",
-        new AzureKeyCredential(key)
-      );
-      
-    } else {
-      console.warn("⚠️  Event Grid not configured. Events will be logged only.");
-    }
+    this.client = new EventGridPublisherClient(
+      endpoint,
+      "EventGrid",
+      new AzureKeyCredential(key)
+    );
   }
 
-  async publishLoanCreated(loan: Loan): Promise<void> {
-    const event = {
-      eventType: "Loan.Created",
-      subject: `LoanService/loans/${loan.loanId}`,
-      data: {
-        loanId: loan.loanId,
-        userId: loan.userId,
-        modelId: loan.modelId,
-        status: loan.status,
-        createdAt: loan.createdAt,
-        dueAt: loan.dueAt
+  private async send(eventType: string, data: any) {
+    await this.client.send([
+      {
+        id: crypto.randomUUID(),
+        eventType,
+        subject: `LoanService/loans/${data.id}`,
+        data,
+        dataVersion: "1.0",
+        eventTime: new Date().toISOString(),
       },
-      eventTime: new Date(),
-      dataVersion: "1.0"
-    };
-
-    if (this.client) {
-      await this.client.send([event]);
-      console.log(`📢 Loan.Created published → ${loan.loanId}`);
-    } else {
-      console.log(`📢 [MOCK] Loan.Created → ${loan.loanId}`, event.data);
-    }
+    ]);
   }
 
-  async publishLoanCancelled(loan: Loan): Promise<void> {
-    const event = {
-      eventType: "Loan.Cancelled",
-      subject: `LoanService/loans/${loan.loanId}`,
-      data: {
-        loanId: loan.loanId,
-        userId: loan.userId,
-        modelId: loan.modelId,
-        status: loan.status,
-        cancelledAt: loan.cancelledAt,
-        createdAt: loan.createdAt
-      },
-      eventTime: new Date(),
-      dataVersion: "1.0"
-    };
+  async publishLoanCreated(loan: LoanRecord): Promise<void> {
+    await this.send("Loan.Created", {
+      id: loan.id,
+      userId: loan.userId,
+      deviceId: loan.deviceId,
+      status: loan.status,
+      createdAt: loan.createdAt
+    });
+  }
 
-    if (this.client) {
-      await this.client.send([event]);
-      console.log(`📢 Loan.Cancelled published → ${loan.loanId}`);
-    } else {
-      console.log(`📢 [MOCK] Loan.Cancelled → ${loan.loanId}`, event.data);
-    }
+  async publishLoanCancelled(loan: LoanRecord): Promise<void> {
+    await this.send("Loan.Cancelled", {
+      id: loan.id,
+      userId: loan.userId,
+      deviceId: loan.deviceId,
+      status: loan.status,
+      cancelledAt: loan.cancelledAt,
+      notes: loan.notes
+    });
+  }
+
+  async publishLoanReturned(loan: LoanRecord): Promise<void> {
+    await this.send("Loan.Returned", {
+      id: loan.id,
+      userId: loan.userId,
+      deviceId: loan.deviceId,
+      reservationId: loan.reservationId,
+      status: loan.status,
+      returnedAt: loan.returnedAt
+    });
   }
 }

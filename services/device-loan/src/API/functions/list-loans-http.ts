@@ -1,25 +1,18 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
-import { CosmosLoanRepository } from "../../Infrastructure/CosmosLoanRepository";
+import { appServices } from "../../appServices";
 
 /**
- * GET /loans?userId=<userId>
- * Lists all loans (current and past) for a specific user
+ * GET /loans?userId={userId}&status={status}
+ * Lists loans filtered by userId and/or status
  */
 export async function listLoansHttp(req: HttpRequest, ctx: InvocationContext): Promise<HttpResponseInit> {
   try {
     const userId = req.query.get("userId");
+    const status = req.query.get("status");
     
-    if (!userId) {
-      return {
-        status: 400,
-        jsonBody: { error: "userId query parameter is required" }
-      };
-    }
+    const loans = await appServices.listLoansHandler.execute({ userId, status });
 
-    const repo = new CosmosLoanRepository();
-    const loans = await repo.findByUser(userId);
-
-    ctx.log(`Retrieved ${loans.length} loans for user ${userId}`);
+    ctx.log(`Retrieved ${loans.length} loans`);
 
     return {
       status: 200,

@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
-import { Loan } from "../../Domain/Entities/Loan";
+import { LoanRecord } from "../../Domain/Entities/LoanRecord";
+import { LoanStatus } from "../../Domain/Enums/LoanStatus";
 import { CosmosLoanRepository } from "../../Infrastructure/CosmosLoanRepository";
 import { LoanEventPublisher } from "../../Infrastructure/EventGrid/LoanEventPublisher";
 
@@ -14,11 +15,21 @@ export class CreateLoanHandler {
     private publisher: LoanEventPublisher
   ) {}
 
-  async execute(userId: string, modelId: string): Promise<Loan> {
-    const loanId = randomUUID();
+  async execute(userId: string, deviceId: string): Promise<LoanRecord> {
+    const now = new Date().toISOString();
 
-    // Create new loan with 2-day timer
-    const loan = new Loan(loanId, userId, modelId, "pending");
+    // Create new loan with pending status
+    const loan: LoanRecord = {
+      id: randomUUID(),
+      userId: userId,
+      reservationId: "",
+      deviceId: deviceId,
+      startDate: "",
+      dueDate: "",
+      status: LoanStatus.Pending,
+      createdAt: now,
+      updatedAt: now,
+    };
 
     // Save to database
     await this.loanRepo.create(loan);

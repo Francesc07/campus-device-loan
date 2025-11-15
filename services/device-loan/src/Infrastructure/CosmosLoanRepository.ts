@@ -1,5 +1,5 @@
 import { CosmosClient } from "@azure/cosmos";
-import { Loan } from "../Domain/Entities/Loan";
+import { LoanRecord } from "../Domain/Entities/LoanRecord";
 
 export class CosmosLoanRepository {
   private container;
@@ -15,17 +15,17 @@ export class CosmosLoanRepository {
     this.container = db.container(containerName);
   }
 
-  async create(loan: Loan): Promise<Loan> {
+  async create(loan: LoanRecord): Promise<LoanRecord> {
     const { resource } = await this.container.items.create(loan);
-    return resource as Loan;
+    return resource as LoanRecord;
   }
 
-  async update(loan: Loan): Promise<Loan> {
+  async update(loan: LoanRecord): Promise<LoanRecord> {
     const { resource } = await this.container.items.upsert(loan);
-    return resource as Loan;
+    return resource as LoanRecord;
   }
 
-  async findById(loanId: string): Promise<Loan | null> {
+  async findById(loanId: string): Promise<LoanRecord | null> {
     const query = `SELECT * FROM c WHERE c.loanId = @loanId`;
     const { resources } = await this.container.items.query({
       query,
@@ -35,12 +35,39 @@ export class CosmosLoanRepository {
     return resources[0] || null;
   }
 
-  async findByUser(userId: string): Promise<Loan[]> {
+  async findByUser(userId: string): Promise<LoanRecord[]> {
     const query = `SELECT * FROM c WHERE c.userId = @userId ORDER BY c.createdAt DESC`;
     const { resources } = await this.container.items.query({
       query,
       parameters: [{ name: "@userId", value: userId }]
     }).fetchAll();
+
+    return resources;
+  }
+
+  async findByReservationId(reservationId: string): Promise<LoanRecord | null> {
+    const query = `SELECT * FROM c WHERE c.reservationId = @reservationId`;
+    const { resources } = await this.container.items.query({
+      query,
+      parameters: [{ name: "@reservationId", value: reservationId }]
+    }).fetchAll();
+
+    return resources[0] || null;
+  }
+
+  async findByStatus(status: string): Promise<LoanRecord[]> {
+    const query = `SELECT * FROM c WHERE c.status = @status ORDER BY c.createdAt DESC`;
+    const { resources } = await this.container.items.query({
+      query,
+      parameters: [{ name: "@status", value: status }]
+    }).fetchAll();
+
+    return resources;
+  }
+
+  async findAll(): Promise<LoanRecord[]> {
+    const query = `SELECT * FROM c ORDER BY c.createdAt DESC`;
+    const { resources } = await this.container.items.query(query).fetchAll();
 
     return resources;
   }

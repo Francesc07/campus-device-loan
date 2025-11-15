@@ -1,32 +1,29 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
-import { CreateLoanHandler } from "../../Application/useCases/CreateLoanHandler";
-import { CosmosLoanRepository } from "../../Infrastructure/CosmosLoanRepository";
-import { LoanEventPublisher } from "../../Infrastructure/EventGrid/LoanEventPublisher";
+import { appServices } from "../../appServices";
 
 /**
  * POST /loans
- * Creates a new loan (borrow/reserve device) and triggers 2-day timer
+ * Creates a new loan (borrow/reserve device)
  * Publishes: Loan.Created event
  */
 export async function createLoanHttp(req: HttpRequest, ctx: InvocationContext): Promise<HttpResponseInit> {
   try {
-    const body = await req.json() as { userId: string; modelId: string };
+    const body = await req.json() as { userId: string; deviceId: string; notes?: string };
     
-    if (!body.userId || !body.modelId) {
+    if (!body.userId || !body.deviceId) {
       return {
         status: 400,
-        jsonBody: { error: "userId and modelId are required" }
+        jsonBody: { error: "userId and deviceId are required" }
       };
     }
 
-    const handler = new CreateLoanHandler(
-      new CosmosLoanRepository(),
-      new LoanEventPublisher()
-    );
+    const loan = await appServices.createLoanHandler.execute({
+      userId: body.userId,
+      deviceId: body.deviceId,
+      notes: body.notes
+    });
 
-    const loan = await handler.execute(body.userId, body.modelId);
-
-    ctx.log(`Loan created: ${loan.loanId} for user ${loan.userId}`);
+    ctx.log(`Loan created: ${loan.id} for user ${loan.userId}`);
 
     return {
       status: 201,

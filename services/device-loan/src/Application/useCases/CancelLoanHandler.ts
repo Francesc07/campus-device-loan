@@ -1,4 +1,5 @@
-import { Loan } from "../../Domain/Entities/Loan";
+import { LoanRecord  } from "../../Domain/Entities/LoanRecord";
+import { LoanStatus } from "../../Domain/Enums/LoanStatus";
 import { CosmosLoanRepository } from "../../Infrastructure/CosmosLoanRepository";
 import { LoanEventPublisher } from "../../Infrastructure/EventGrid/LoanEventPublisher";
 
@@ -12,7 +13,7 @@ export class CancelLoanHandler {
     private publisher: LoanEventPublisher
   ) {}
 
-  async execute(loanId: string): Promise<Loan | null> {
+  async execute(loanId: string): Promise<LoanRecord | null> {
     // Find the loan
     const loan = await this.loanRepo.findById(loanId);
     
@@ -21,16 +22,16 @@ export class CancelLoanHandler {
     }
 
     // Check if loan can be cancelled (not already returned or cancelled)
-    if (loan.status === "cancelled") {
+    if (loan.status === LoanStatus.Cancelled) {
       throw new Error("Loan is already cancelled");
     }
 
-    if (loan.status === "returned") {
+    if (loan.status === LoanStatus.Returned) {
       throw new Error("Cannot cancel a returned loan");
     }
 
     // Cancel the loan
-    loan.status = "cancelled";
+    loan.status = LoanStatus.Cancelled;
     loan.cancelledAt = new Date().toISOString();
 
     // Update in database

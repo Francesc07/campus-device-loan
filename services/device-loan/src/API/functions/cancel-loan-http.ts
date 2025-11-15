@@ -1,16 +1,15 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
-import { CancelLoanHandler } from "../../Application/useCases/CancelLoanHandler";
-import { CosmosLoanRepository } from "../../Infrastructure/CosmosLoanRepository";
-import { LoanEventPublisher } from "../../Infrastructure/EventGrid/LoanEventPublisher";
+import { appServices } from "../../appServices";
 
 /**
  * DELETE /loans/{loanId}
- * Cancels a loan before pickup
+ * Cancels a pending loan before pickup
  * Publishes: Loan.Cancelled event
  */
 export async function cancelLoanHttp(req: HttpRequest, ctx: InvocationContext): Promise<HttpResponseInit> {
   try {
     const loanId = req.params.loanId;
+    const body = await req.json().catch(() => ({})) as { reason?: string };
     
     if (!loanId) {
       return {
@@ -19,12 +18,11 @@ export async function cancelLoanHttp(req: HttpRequest, ctx: InvocationContext): 
       };
     }
 
-    const handler = new CancelLoanHandler(
-      new CosmosLoanRepository(),
-      new LoanEventPublisher()
-    );
-
-    const loan = await handler.execute(loanId);
+    const loan = await appServices.cancelLoanHandler.execute({
+      loanId,
+      userId: "", // Not needed for cancel by ID
+      reason: body.reason
+    });
 
     if (!loan) {
       return {

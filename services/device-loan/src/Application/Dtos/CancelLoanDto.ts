@@ -1,4 +1,5 @@
 export interface CancelLoanDto {
   loanId: string;
-  reason?: string;
+  userId: string;        // Ensure student is owner
+  reason?: string
 }

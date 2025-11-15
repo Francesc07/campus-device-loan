@@ -1,6 +1,18 @@
-// functionApp.ts
-// Import all HTTP functions
-import "./src/API/functions/create-loan-http";
-import "./src/API/functions/cancel-loan-http";
-import "./src/API/functions/list-loans-http";
-import "./src/API/functions/device-sync-http";
+import { app } from "@azure/functions";
+
+// -------------------------------
+// Loan HTTP API Endpoints
+// -------------------------------
+import "./API/Http/createLoanHttp";
+import "./API/Http/cancelLoanHttp";
+import "./API/Http/listLoansHttp";
+
+// -------------------------------
+// EventGrid Inbound Event Handlers
+// -------------------------------
+import "./API/Events/reservationEventsHttp";
+import "./API/Events/staffEventsHttp";
+
+
+// Export the application
+export default app;

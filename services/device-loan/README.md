@@ -154,26 +154,44 @@ Return the current and past loans for a user. Supports filtering by `userId`.
 }
 ```
 
-### POST /events/device-sync
+## Event Grid Integration
 
-Webhook used by the Catalog Service to push device snapshots.
+### Device Catalog Sync (Event Grid Trigger)
 
-**Request**
+**Function**: `deviceSyncEventGrid`  
+**Trigger Type**: Event Grid  
+**Subscribes To**: Catalog Service Event Grid Topic
 
+This function maintains a local snapshot of the device catalog for resilience. When the Catalog Service is unavailable, loans can still validate device availability from local snapshots.
+
+**Subscribed Events**:
+- `Device.Created` - Adds new device to local snapshot
+- `Device.Updated` - Updates device availability/details
+- `Device.Deleted` - Removes device from snapshot
+
+**Event Schema**:
 ```json
-[
-  {
-    "id": "uuid",
-    "eventType": "Device.Snapshot",
-    "data": {
-      "modelId": "laptop-model-456",
-      "availableCount": 12
-    }
+{
+  "id": "event-uuid",
+  "eventType": "Device.Updated",
+  "subject": "devices/device-123",
+  "eventTime": "2025-11-15T10:30:00Z",
+  "data": {
+    "id": "device-123",
+    "brand": "Dell",
+    "model": "Latitude 5420",
+    "category": "Laptop",
+    "description": "14-inch business laptop",
+    "availableCount": 8,
+    "maxDeviceCount": 15,
+    "imageUrl": "https://...",
+    "fileUrl": "https://..."
   }
-]
+}
 ```
 
-No response body is returned when the payload is accepted.
+**Configuration Required**:  
+Create an Event Grid subscription in Azure Portal pointing the Catalog Service topic to this function's Event Grid trigger endpoint.
 
 ### Error responses
 
