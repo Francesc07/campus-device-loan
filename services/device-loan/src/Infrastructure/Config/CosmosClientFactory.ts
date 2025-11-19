@@ -9,11 +9,11 @@ export class CosmosClientFactory {
    */
   static getClient(): CosmosClient {
     if (!cosmosClient) {
-      const endpoint = process.env.COSMOS_ENDPOINT;
-      const key = process.env.COSMOS_KEY;
+      const endpoint = process.env.COSMOS_DB_ENDPOINT;
+      const key = process.env.COSMOS_DB_KEY;
 
       if (!endpoint || !key) {
-        throw new Error("CosmosClientFactory: COSMOS_ENDPOINT or COSMOS_KEY missing");
+        throw new Error("CosmosClientFactory: COSMOS_DB_ENDPOINT or COSMOS_DB_KEY missing");
       }
 
       cosmosClient = new CosmosClient({ endpoint, key });

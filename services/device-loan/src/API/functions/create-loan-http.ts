@@ -42,7 +42,7 @@ export async function createLoanHttp(req: HttpRequest, ctx: InvocationContext): 
 }
 
 app.http("createLoanHttp", {
-  methods: ["POST"],
+  methods: ["POST", "OPTIONS"],
   route: "loans",
   authLevel: "anonymous",
   handler: createLoanHttp,

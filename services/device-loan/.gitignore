@@ -20,21 +20,17 @@ project.lock.json
 /data
 .secrets
 appsettings.json
-local.settings.json
-/local.settings.json
-local.settings.*.local.json
+/local.settings.dev.json
+/local.settings.test.json
+/local.settings.prod.json
+local.settings.dev.json
+local.settings.test.json
+local.settings.prod.json
 
 # Environment files with actual secrets
 .env
 .env.*.local
-
-# Keep environment templates (these should be committed)
-!.env.dev
-!.env.test
-!.env.prod
-!local.settings.dev.json
-!local.settings.test.json
-!local.settings.prod.json
+.env.settings.*.json
 
 node_modules
 dist

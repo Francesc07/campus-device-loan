@@ -8,8 +8,8 @@ export class CosmosLoanRepository implements ILoanRepository {
 
   constructor() {
     this.container = CosmosClientFactory.getContainer(
-      process.env.COSMOS_LOAN_DB ?? "loan-db",
-      process.env.COSMOS_LOAN_CONTAINER ?? "loans"
+      process.env.COSMOS_DB_DATABASE ,
+      process.env.COSMOS_DB_CONTAINER 
     );
   }
 

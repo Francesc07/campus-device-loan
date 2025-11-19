@@ -1,12 +1,17 @@
 {
   "name": "device-loan",
   "version": "1.0.0",
-  "main": "dist/API/functions/*.js",
+  "main": "dist/functionApp.js",
   "scripts": {
     "build": "tsc",
     "clean": "rimraf dist",
-    "prestart": "npm run clean && npm run build",
-    "start": "func start --typescript"
+    "watch": "tsc --watch",
+    "prestart": "npm run build",
+    "start": "func start --port 7072",
+    "start:dev": "cp local.settings.dev.json local.settings.json && npm start",
+    "start:test": "cp local.settings.test.json local.settings.json && npm start",
+    "start:prod": "cp local.settings.prod.json local.settings.json && npm start",
+    "seed:devices": "ts-node tools/seed-device-snapshots.ts"
   },
   "keywords": [],
   "author": "",

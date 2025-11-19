@@ -1,6 +1,6 @@
 import { LoanRecord  } from "../../Domain/Entities/LoanRecord";
 import { LoanStatus } from "../../Domain/Enums/LoanStatus";
-import { CosmosLoanRepository } from "../../Infrastructure/CosmosLoanRepository";
+import { CosmosLoanRepository } from "../../Infrastructure/Persistence/CosmosLoanRepository";
 import { LoanEventPublisher } from "../../Infrastructure/EventGrid/LoanEventPublisher";
 
 /**

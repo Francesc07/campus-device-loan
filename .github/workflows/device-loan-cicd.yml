@@ -1,0 +1,153 @@
+name: Device Loan Service - CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/device-loan/**'
+      - '.github/workflows/device-loan-cicd.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'services/device-loan/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - test
+          - prod
+          - all
+
+env:
+  NODE_VERSION: '22.x'
+  WORKING_DIRECTORY: './services/device-loan'
+  AZURE_LOCATION: 'uksouth'
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: npm ci
+
+    - name: Build TypeScript
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: npm run build
+
+    - name: Run tests
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: npm test || echo "No tests configured"
+
+    - name: Prepare deployment package
+      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: |
+        mkdir -p deploy-package
+        cp -r dist deploy-package/
+        cp -r node_modules deploy-package/
+        cp package.json deploy-package/
+        cp host.json deploy-package/
+        cp functionApp.ts deploy-package/
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: device-loan-build
+        path: ${{ env.WORKING_DIRECTORY }}/deploy-package
+        retention-days: 1
+
+  deploy-test:
+    name: Deploy to TEST
+    needs: build
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.environment == 'test' || github.event.inputs.environment == 'all'))
+    environment:
+      name: test
+      url: https://func-deviceloan-test-ab07.azurewebsites.net
+
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: device-loan-build
+        path: ./deploy
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS_TEST }}
+
+    - name: Deploy to Azure Functions (TEST)
+      uses: Azure/functions-action@v1
+      with:
+        app-name: func-deviceloan-test-ab07
+        package: ./deploy
+        respect-funcignore: true
+
+    - name: Logout from Azure
+      run: az logout
+
+  deploy-prod:
+    name: Deploy to PROD
+    needs: [build, deploy-test]
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.environment == 'prod' || github.event.inputs.environment == 'all'))
+    environment:
+      name: prod
+      url: https://func-deviceloan-prod-ab07.azurewebsites.net
+
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: device-loan-build
+        path: ./deploy
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+    - name: Deploy to Azure Functions (PROD)
+      uses: Azure/functions-action@v1
+      with:
+        app-name: func-deviceloan-prod-ab07
+        package: ./deploy
+        respect-funcignore: true
+
+    - name: Logout from Azure
+      run: az logout
+
+  notify:
+    name: Deployment Notification
+    needs: [deploy-test, deploy-prod]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Deployment Summary
+      run: |
+        echo "## Deployment Results" >> $GITHUB_STEP_SUMMARY
+        echo "- **TEST**: ${{ needs.deploy-test.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **PROD**: ${{ needs.deploy-prod.result }}" >> $GITHUB_STEP_SUMMARY

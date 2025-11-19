@@ -1,5 +1,6 @@
-import { CosmosClient, Container } from "@azure/cosmos";
+import { Container } from "@azure/cosmos";
 import { DeviceSnapshot } from "../Models/DeviceSnapshot";
+import { CosmosClientFactory } from "../Config/CosmosClientFactory";
 
 /**
  * Repository for managing local device catalog snapshots.
@@ -9,13 +10,10 @@ export class DeviceSnapshotRepository {
   private container: Container;
 
   constructor() {
-    const endpoint = process.env.COSMOS_DB_ENDPOINT!;
-    const key = process.env.COSMOS_DB_KEY!;
-    const databaseId = process.env.COSMOS_DATABASE_ID || "DeviceLoanDB";
-    const containerId = process.env.COSMOS_DEVICESNAPSHOTS_CONTAINER_ID || "DeviceSnapshots";
+    const databaseId = process.env.COSMOS_DB_DATABASE;
+    const containerId = process.env.COSMOS_DEVICESNAPSHOTS_CONTAINER_ID ;
 
-    const client = new CosmosClient({ endpoint, key });
-    this.container = client.database(databaseId).container(containerId);
+    this.container = CosmosClientFactory.getContainer(databaseId, containerId);
   }
 
   /**

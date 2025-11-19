@@ -3,16 +3,18 @@ import { app } from "@azure/functions";
 // -------------------------------
 // Loan HTTP API Endpoints
 // -------------------------------
-import "./API/Http/createLoanHttp";
-import "./API/Http/cancelLoanHttp";
-import "./API/Http/listLoansHttp";
+import "./src/API/functions/create-loan-http";
+import "./src/API/functions/cancel-loan-http";
+import "./src/API/functions/list-loans-http";
+import "./src/API/functions/get-loan-by-id-http";
 
 // -------------------------------
-// EventGrid Inbound Event Handlers
+// Event Grid Triggers
 // -------------------------------
-import "./API/Events/reservationEventsHttp";
-import "./API/Events/staffEventsHttp";
-
+import "./src/API/functions/device-sync-eventgrid";
+import "./src/API/functions/device-sync-http";
+import "./src/API/functions/reservationEventsHttp";
+import "./src/API/functions/staffEventsHttp";
 
 // Export the application
 export default app;
