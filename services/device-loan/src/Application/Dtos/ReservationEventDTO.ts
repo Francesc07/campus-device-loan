@@ -1,12 +1,10 @@
-export interface ReservationConfirmedEventDTO {
+export interface ReservationEventDTO {
+  eventType: "Reservation.Confirmed" | "Reservation.Cancelled";
   reservationId: string;
-  userId: string;
   deviceId: string;
-  startDate: string;     // Provided by ReservationService
-  dueDate: string;       // Provided by ReservationService
-}
+  userId: string;
+  reason?: string;
 
-export interface ReservationCancelledEventDTO {
-  reservationId: string;
-  cancelledAt: string;
+  // Only present in Reservation.Cancelled
+  loanId?: string;
 }

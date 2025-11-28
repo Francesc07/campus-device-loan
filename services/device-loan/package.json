@@ -1,16 +1,13 @@
 {
   "name": "device-loan",
   "version": "1.0.0",
-  "main": "dist/functionApp.js",
+  "main": "dist/src/functionApp.js",
   "scripts": {
     "build": "tsc",
     "clean": "rimraf dist",
     "watch": "tsc --watch",
     "prestart": "npm run build",
-    "start": "func start --port 7072",
-    "start:dev": "cp local.settings.dev.json local.settings.json && npm start",
-    "start:test": "cp local.settings.test.json local.settings.json && npm start",
-    "start:prod": "cp local.settings.prod.json local.settings.json && npm start",
+    "start": "func start --typescript",
     "seed:devices": "ts-node tools/seed-device-snapshots.ts"
   },
   "keywords": [],
@@ -26,7 +23,6 @@
   },
   "devDependencies": {
     "@types/node": "^24.9.1",
-    "azure-functions-core-tools": "^4.3.0",
     "rimraf": "^6.0.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

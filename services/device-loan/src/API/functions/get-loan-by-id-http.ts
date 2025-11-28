@@ -1,51 +1,51 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
-import { appServices } from "../../appServices";
+import { app, InvocationContext } from "@azure/functions";
+import { DeviceSnapshotRepository } from "../../Infrastructure/Persistence/DeviceSnapshotRepository";
 
 /**
- * GET /loans/{loanId}
- * Get a specific loan by ID
+ * Event Grid Trigger: Device Catalog Sync
+ * Subscribes to: Device.Created, Device.Updated, Device.Deleted
+ * Maintains local device snapshots for resilience
  */
-export async function getLoanByIdHttp(req: HttpRequest, ctx: InvocationContext): Promise<HttpResponseInit> {
+export async function deviceSyncEventGrid(event: any, ctx: InvocationContext): Promise<void> {
   try {
-    const loanId = req.params.loanId;
-    
-    if (!loanId) {
-      return {
-        status: 400,
-        jsonBody: { error: "loanId is required" }
-      };
+    ctx.log(`📥 Received event: ${event.eventType} for device ${event.data?.id}`);
+
+    const repo = new DeviceSnapshotRepository();
+
+    switch (event.eventType) {
+      case "Device.Created":
+      case "Device.Updated":
+        // Upsert device snapshot
+        await repo.saveSnapshot({
+          id: event.data.id,
+          brand: event.data.brand,
+          model: event.data.model,
+          category: event.data.category,
+          description: event.data.description,
+          availableCount: event.data.availableCount,
+          maxDeviceCount: event.data.maxDeviceCount,
+          imageUrl: event.data.imageUrl,
+          fileUrl: event.data.fileUrl,
+          lastUpdated: event.eventTime || new Date().toISOString()
+        });
+        ctx.log(`✅ Synced device snapshot: ${event.data.model}`);
+        break;
+
+      case "Device.Deleted":
+        // Remove device snapshot
+        await repo.deleteSnapshot(event.data.id);
+        ctx.log(`🗑️ Deleted device snapshot: ${event.data.id}`);
+        break;
+
+      default:
+        ctx.warn(`⚠️ Unknown event type: ${event.eventType}`);
     }
-
-    const loans = await appServices.listLoansHandler.execute({ loanId });
-
-    if (!loans || loans.length === 0) {
-      return {
-        status: 404,
-        jsonBody: { error: "Loan not found" }
-      };
-    }
-
-    ctx.log(`Retrieved loan: ${loanId}`);
-
-    return {
-      status: 200,
-      jsonBody: {
-        success: true,
-        data: loans[0]
-      }
-    };
   } catch (err: any) {
-    ctx.error("Error getting loan:", err);
-    return {
-      status: 500,
-      jsonBody: { error: err.message }
-    };
+    ctx.error("❌ Error syncing device snapshot:", err);
+    throw err; // Propagate error for Event Grid retry
   }
 }
 
-app.http("getLoanByIdHttp", {
-  methods: ["GET"],
-  route: "loans/{loanId}",
-  authLevel: "anonymous",
-  handler: getLoanByIdHttp,
+app.eventGrid("deviceSyncEventGrid", {
+  handler: deviceSyncEventGrid,
 });

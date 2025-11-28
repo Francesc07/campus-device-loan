@@ -1,22 +1,21 @@
 import { ILoanRepository } from "../Interfaces/ILoanRepository";
-import { ReservationConfirmedEventDTO } from "../Dtos/ReservationEventDTO";
+import { ReservationEventDTO } from "../Dtos/ReservationEventDTO";
 import { LoanStatus } from "../../Domain/Enums/LoanStatus";
 
+/**
+ * Activates a loan after Reservation.Confirmed
+ */
 export class ActivateLoanUseCase {
-  constructor(private readonly repo: ILoanRepository) {}
+  constructor(private readonly loanRepo: ILoanRepository) {}
 
-  async execute(event: ReservationConfirmedEventDTO) {
-    const loan = await this.repo.findByReservationId(event.reservationId);
-
-    if (!loan) {
-      throw new Error("Loan not found for reservation");
-    }
+  async execute(evt: ReservationEventDTO) {
+    const loan = await this.loanRepo.getByReservation(evt.reservationId);
+    if (!loan) return null;
 
     loan.status = LoanStatus.Active;
-    loan.startDate = event.startDate;
-    loan.dueDate = event.dueDate;
     loan.updatedAt = new Date().toISOString();
 
-    return await this.repo.update(loan);
+    await this.loanRepo.update(loan);
+    return loan;
   }
 }

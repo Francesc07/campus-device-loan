@@ -1,27 +1,16 @@
-import { ActivateLoanHandler } from "../../Application/Handlers/ActivateLoanHandler";
-import { CancelLoanHandler } from "../../Application/Handlers/CancelLoanHandler";
-import { ReservationConfirmedEventDTO, ReservationCancelledEventDTO } from "../../Application/Dtos/ReservationEventDTO";
+// src/Infrastructure/EventGrid/ReservationEventsProcessor.ts
+import { ActivateLoanUseCase } from "../../Application/UseCases/ActivateLoanUseCase";
+import { ReservationEventDTO } from "../../Application/Dtos/ReservationEventDTO";
 
 export class ReservationEventsProcessor {
   constructor(
-    private readonly activateHandler: ActivateLoanHandler,
-    private readonly cancelHandler: CancelLoanHandler
+    private readonly activateLoanUseCase: ActivateLoanUseCase
   ) {}
 
-  async handleEvent(eventType: string, data: any) {
-    switch (eventType) {
-      case "Reservation.Confirmed":
-        return this.activateHandler.execute(data as ReservationConfirmedEventDTO);
-
-      case "Reservation.Cancelled":
-        return this.cancelHandler.execute({
-          loanId: data.loanId,
-          userId: data.userId || "",
-          reason: data.reason || "Cancelled by reservation service"
-        });
-
-      default:
-        return;
-    }
+  /**
+   * Handle Reservation.Confirmed events only
+   */
+  async handleConfirmed(data: ReservationEventDTO) {
+    await this.activateLoanUseCase.execute(data);
   }
 }

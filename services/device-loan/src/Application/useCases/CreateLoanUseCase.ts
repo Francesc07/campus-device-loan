@@ -1,49 +1,45 @@
-import { randomUUID } from "crypto";
 import { ILoanRepository } from "../Interfaces/ILoanRepository";
+import { IDeviceSnapshotRepository } from "../Interfaces/IDeviceSnapshotRepository";
 import { ILoanEventPublisher } from "../Interfaces/ILoanEventPublisher";
 import { CreateLoanDto } from "../Dtos/CreateLoanDto";
 import { LoanRecord } from "../../Domain/Entities/LoanRecord";
 import { LoanStatus } from "../../Domain/Enums/LoanStatus";
-import { DeviceSnapshotRepository } from "../../Infrastructure/Persistence/DeviceSnapshotRepository";
+import { v4 as uuidv4 } from "uuid";
 
 export class CreateLoanUseCase {
   constructor(
-    private readonly repo: ILoanRepository,
-    private readonly publisher: ILoanEventPublisher
+    private loanRepo: ILoanRepository,
+    private snapshotRepo: IDeviceSnapshotRepository,
+    private eventPublisher: ILoanEventPublisher
   ) {}
 
   async execute(dto: CreateLoanDto): Promise<LoanRecord> {
-    // Validate device availability from local snapshot (resilience pattern)
-    const deviceRepo = new DeviceSnapshotRepository();
-    const device = await deviceRepo.findById(dto.deviceId);
+    const device = await this.snapshotRepo.getSnapshot(dto.deviceId);
 
-    if (!device) {
-      throw new Error(`Device ${dto.deviceId} not found in catalog snapshot. Please sync device catalog.`);
+    if (!device || !device.availableCount || device.availableCount <= 0) {
+      throw new Error("Device is not available for loan.");
     }
 
-    if (device.availableCount <= 0) {
-      throw new Error(`Device ${device.model} is not available. Available count: ${device.availableCount}`);
-    }
-
-    const now = new Date().toISOString();
+    const now = new Date();
+    const due = new Date();
+    due.setDate(due.getDate() + 2); // standard 2-day loan
 
     const loan: LoanRecord = {
-      id: randomUUID(),
+      id: uuidv4(),
       userId: dto.userId,
-      reservationId: "",        // Filled after Reservation.Confirmed
+      reservationId: dto.reservationId,
       deviceId: dto.deviceId,
-      startDate: "",            // Set by Reservation.Confirmed
-      dueDate: "",              // Set by Reservation.Confirmed
+      startDate: now.toISOString(),
+      dueDate: due.toISOString(),
       status: LoanStatus.Pending,
-      createdAt: now,
-      updatedAt: now,
-      notes: dto.notes,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
     };
 
-    const saved = await this.repo.create(loan);
+    await this.loanRepo.create(loan);
 
-    await this.publisher.publishLoanCreated(saved);
+    await this.eventPublisher.publish("Loan.Created", loan);
 
-    return saved;
+    return loan;
   }
 }

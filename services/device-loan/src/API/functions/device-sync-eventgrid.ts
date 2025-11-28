@@ -1,51 +1,57 @@
+// src/API/functions/device-sync-eventgrid.ts
+
 import { app, InvocationContext } from "@azure/functions";
 import { DeviceSnapshotRepository } from "../../Infrastructure/Persistence/DeviceSnapshotRepository";
 
 /**
  * Event Grid Trigger: Device Catalog Sync
- * Subscribes to: Device.Created, Device.Updated, Device.Deleted
- * Maintains local device snapshots for resilience
+ * Loan Service keeps a local read-only copy of all device data
  */
 export async function deviceSyncEventGrid(event: any, ctx: InvocationContext): Promise<void> {
   try {
-    ctx.log(`📥 Received event: ${event.eventType} for device ${event.data?.id}`);
+    const evtType = event.eventType;
+    const data = event.data;
+
+    ctx.log(`📥 LoanService received catalog event: ${evtType} (${data?.id})`);
 
     const repo = new DeviceSnapshotRepository();
 
-    switch (event.eventType) {
+    switch (evtType) {
+      case "Device.Snapshot":
       case "Device.Created":
       case "Device.Updated":
-        // Upsert device snapshot
-        await repo.upsert({
-          id: event.data.id,
-          brand: event.data.brand,
-          model: event.data.model,
-          category: event.data.category,
-          description: event.data.description,
-          availableCount: event.data.availableCount,
-          maxDeviceCount: event.data.maxDeviceCount,
-          imageUrl: event.data.imageUrl,
-          fileUrl: event.data.fileUrl,
-          lastUpdated: event.eventTime || new Date().toISOString()
+        await repo.saveSnapshot({
+          id: data.id,
+          brand: data.brand,
+          model: data.model,
+          category: data.category,
+          description: data.description,
+          availableCount: data.availableCount,
+          maxDeviceCount: data.maxDeviceCount,
+          imageUrl: data.imageUrl,
+          fileUrl: data.fileUrl,
+          lastUpdated: event.eventTime ?? new Date().toISOString()
         });
-        ctx.log(`✅ Synced device snapshot: ${event.data.model}`);
+
+        ctx.log(`✅ Sync applied for device: ${data.model}`);
         break;
 
       case "Device.Deleted":
-        // Remove device snapshot
-        await repo.delete(event.data.id);
-        ctx.log(`🗑️ Deleted device snapshot: ${event.data.id}`);
+        await repo.deleteSnapshot(data.id);
+        ctx.log(`🗑️ Snapshot deleted for device: ${data.id}`);
         break;
 
       default:
-        ctx.warn(`⚠️ Unknown event type: ${event.eventType}`);
+        ctx.warn(`⚠️ Unknown catalog event type: ${evtType}`);
+        break;
     }
+
   } catch (err: any) {
-    ctx.error("❌ Error syncing device snapshot:", err);
-    throw err; // Propagate error for Event Grid retry
+    ctx.error("❌ Error processing device sync event:", err);
+    throw err; // Event Grid will retry
   }
 }
 
-app.eventGrid("deviceSyncEventGrid", {
+app.eventGrid("device-sync-event-grid", {
   handler: deviceSyncEventGrid,
 });

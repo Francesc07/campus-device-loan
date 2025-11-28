@@ -1,11 +1,10 @@
-import { CreateLoanDto } from "../Dtos/CreateLoanDto";
 import { CreateLoanUseCase } from "../UseCases/CreateLoanUseCase";
-import { LoanRecord } from "../../Domain/Entities/LoanRecord";
+import { CreateLoanDto } from "../Dtos/CreateLoanDto";
 
 export class CreateLoanHandler {
-  constructor(private readonly useCase: CreateLoanUseCase) {}
+  constructor(private useCase: CreateLoanUseCase) {}
 
-  async execute(dto: CreateLoanDto): Promise<LoanRecord> {
+  async execute(dto: CreateLoanDto) {
     return this.useCase.execute(dto);
   }
 }

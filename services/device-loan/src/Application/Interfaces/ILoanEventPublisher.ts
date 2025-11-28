@@ -1,7 +1,11 @@
+// src/Application/Interfaces/ILoanEventPublisher.ts
 import { LoanRecord } from "../../Domain/Entities/LoanRecord";
 
 export interface ILoanEventPublisher {
-  publishLoanCreated(loan: LoanRecord): Promise<void>;
-  publishLoanCancelled(loan: LoanRecord): Promise<void>;
-  publishLoanReturned(loan: LoanRecord): Promise<void>;
+  /**
+   * Loan Service only emits:
+   *  - "Loan.Created"
+   *  - "Loan.Cancelled"
+   */
+  publish(eventType: "Loan.Created" | "Loan.Cancelled", data: LoanRecord): Promise<void>;
 }

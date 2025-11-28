@@ -1,33 +1,30 @@
+// src/Infrastructure/Config/CosmosClientFactory.ts
 import { CosmosClient, Container } from "@azure/cosmos";
 
-let cosmosClient: CosmosClient | null = null;
-
+/**
+ * Centralised Cosmos DB client + container helper.
+ * All repositories get their containers from here.
+ */
 export class CosmosClientFactory {
-  
-  /**
-   * Returns a singleton CosmosClient instance.
-   */
-  static getClient(): CosmosClient {
-    if (!cosmosClient) {
-      const endpoint = process.env.COSMOS_DB_ENDPOINT;
-      const key = process.env.COSMOS_DB_KEY;
+  private static client: CosmosClient | null = null;
 
-      if (!endpoint || !key) {
-        throw new Error("CosmosClientFactory: COSMOS_DB_ENDPOINT or COSMOS_DB_KEY missing");
+  static getClient(): CosmosClient {
+    if (!this.client) {
+      const conn = process.env.COSMOS_DB_CONNECTION_STRING;
+      if (!conn) {
+        throw new Error("COSMOS_DB_CONNECTION_STRING missing.");
       }
 
-      cosmosClient = new CosmosClient({ endpoint, key });
+      this.client = new CosmosClient(conn);
     }
-
-    return cosmosClient;
+    return this.client;
   }
 
   /**
-   * Gets a Cosmos DB container using the singleton client.
+   * Convenience helper: get a Cosmos container.
    */
   static getContainer(databaseId: string, containerId: string): Container {
     const client = this.getClient();
-    const db = client.database(databaseId);
-    return db.container(containerId);
+    return client.database(databaseId).container(containerId);
   }
 }

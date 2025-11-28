@@ -16,7 +16,7 @@ export async function deviceSyncEventGrid(event: any, ctx: InvocationContext): P
       case "Device.Created":
       case "Device.Updated":
         // Upsert device snapshot
-        await repo.upsert({
+        await repo.saveSnapshot({
           id: event.data.id,
           brand: event.data.brand,
           model: event.data.model,
@@ -33,7 +33,7 @@ export async function deviceSyncEventGrid(event: any, ctx: InvocationContext): P
 
       case "Device.Deleted":
         // Remove device snapshot
-        await repo.delete(event.data.id);
+        await repo.deleteSnapshot(event.data.id);
         ctx.log(`🗑️ Deleted device snapshot: ${event.data.id}`);
         break;
 

@@ -1,46 +1,43 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { appServices } from "../../appServices";
+import { CancelLoanDto } from "../../Application/Dtos/CancelLoanDto";
 
 /**
- * DELETE /loans/{loanId}
- * Cancels a pending loan before pickup
- * Publishes: Loan.Cancelled event
+ * POST /api/loan/cancel
+ * Student cancels a pending loan
  */
-export async function cancelLoanHttp(req: HttpRequest, ctx: InvocationContext): Promise<HttpResponseInit> {
+export async function cancelLoanHttp(
+  req: HttpRequest,
+  ctx: InvocationContext
+): Promise<HttpResponseInit> {
   try {
-    const loanId = req.params.loanId;
-    const body = await req.json().catch(() => ({})) as { reason?: string };
-    
-    if (!loanId) {
+    const body = (await req.json()) as CancelLoanDto;
+
+    const { loanId, userId, reason } = body;
+
+    if (!loanId || !userId) {
       return {
         status: 400,
-        jsonBody: { error: "loanId is required" }
+        jsonBody: { error: "loanId and userId are required" }
       };
     }
 
-    const loan = await appServices.cancelLoanHandler.execute({
+    const result = await appServices.cancelLoanHandler.execute({
       loanId,
-      userId: "", // Not needed for cancel by ID
-      reason: body.reason
+      userId,
+      reason,
+     
     });
-
-    if (!loan) {
-      return {
-        status: 404,
-        jsonBody: { error: "Loan not found" }
-      };
-    }
-
-    ctx.log(`Loan cancelled: ${loanId}`);
 
     return {
       status: 200,
       jsonBody: {
         success: true,
         message: "Loan cancelled successfully",
-        data: loan
+        data: result
       }
     };
+    
   } catch (err: any) {
     ctx.error("Error cancelling loan:", err);
     return {
@@ -50,9 +47,9 @@ export async function cancelLoanHttp(req: HttpRequest, ctx: InvocationContext): 
   }
 }
 
-app.http("cancelLoanHttp", {
-  methods: ["DELETE"],
-  route: "loans/{loanId}",
+app.http("cancel-loan-http", {
+  methods: ["POST"],
+  route: "loan/cancel",
   authLevel: "anonymous",
   handler: cancelLoanHttp,
 });

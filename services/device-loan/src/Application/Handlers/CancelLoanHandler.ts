@@ -1,11 +1,10 @@
-import { CancelLoanDto } from "../Dtos/CancelLoanDto";
 import { CancelLoanUseCase } from "../UseCases/CancelLoanUseCase";
-import { LoanRecord } from "../../Domain/Entities/LoanRecord";
+import { CancelLoanDto } from "../Dtos/CancelLoanDto";
 
 export class CancelLoanHandler {
-  constructor(private readonly useCase: CancelLoanUseCase) {}
+  constructor(private useCase: CancelLoanUseCase) {}
 
-  async execute(dto: CancelLoanDto): Promise<LoanRecord | null> {
+  async execute(dto: CancelLoanDto) {
     return this.useCase.execute(dto);
   }
 }

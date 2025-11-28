@@ -1,37 +1,42 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { appServices } from "../../appServices";
+import { CreateLoanDto } from "../../Application/Dtos/CreateLoanDto";
 
 /**
- * POST /loans
- * Creates a new loan (borrow/reserve device)
- * Publishes: Loan.Created event
+ * POST /api/loan/create
+ * Student initiates a loan (before reservation confirms it)
  */
-export async function createLoanHttp(req: HttpRequest, ctx: InvocationContext): Promise<HttpResponseInit> {
+export async function createLoanHttp(
+  req: HttpRequest,
+  ctx: InvocationContext
+): Promise<HttpResponseInit> {
   try {
-    const body = await req.json() as { userId: string; deviceId: string; notes?: string };
-    
-    if (!body.userId || !body.deviceId) {
+    const body = (await req.json()) as CreateLoanDto;
+
+    const { userId, deviceId, reservationId } = body;
+
+    if (!userId || !deviceId || !reservationId) {
       return {
         status: 400,
-        jsonBody: { error: "userId and deviceId are required" }
+        jsonBody: { error: "userId, deviceId and reservationId are required" }
       };
     }
 
-    const loan = await appServices.createLoanHandler.execute({
-      userId: body.userId,
-      deviceId: body.deviceId,
-      notes: body.notes
+    const result = await appServices.createLoanHandler.execute({
+      userId,
+      deviceId,
+      reservationId
     });
-
-    ctx.log(`Loan created: ${loan.id} for user ${loan.userId}`);
 
     return {
       status: 201,
       jsonBody: {
         success: true,
-        data: loan
+        message: "Loan created successfully",
+        data: result
       }
     };
+    
   } catch (err: any) {
     ctx.error("Error creating loan:", err);
     return {
@@ -41,9 +46,9 @@ export async function createLoanHttp(req: HttpRequest, ctx: InvocationContext): 
   }
 }
 
-app.http("createLoanHttp", {
-  methods: ["POST", "OPTIONS"],
-  route: "loans",
+app.http("create-loan-http", {
+  methods: ["POST"],
+  route: "loan/create",
   authLevel: "anonymous",
   handler: createLoanHttp,
 });

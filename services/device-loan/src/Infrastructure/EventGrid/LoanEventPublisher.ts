@@ -1,9 +1,20 @@
+// src/Infrastructure/EventGrid/LoanEventPublisher.ts
 import { EventGridPublisherClient, AzureKeyCredential } from "@azure/eventgrid";
+import { randomUUID } from "crypto";
 import { ILoanEventPublisher } from "../../Application/Interfaces/ILoanEventPublisher";
 import { LoanRecord } from "../../Domain/Entities/LoanRecord";
 import { EventPublisherFactory } from "../Config/EventPublisherFactory";
 import { WebhookEventPublisher } from "./WebhookEventPublisher";
 
+/**
+ * LoanEventPublisher
+ *  - In prod/test → publishes events to Azure Event Grid
+ *  - In local dev → publishes via HTTP webhooks to other services
+ *
+ * **Loan Service is only responsible for:**
+ *   - Loan.Created
+ *   - Loan.Cancelled
+ */
 export class LoanEventPublisher implements ILoanEventPublisher {
   private eventGridClient?: EventGridPublisherClient<any>;
   private webhookClient?: WebhookEventPublisher;
@@ -14,19 +25,15 @@ export class LoanEventPublisher implements ILoanEventPublisher {
     this.useEventGrid = config.useEventGrid;
 
     if (this.useEventGrid) {
-      // Production/Test: Use Azure Event Grid
-      console.log("📡 Using Azure Event Grid for event publishing");
+      console.log("📡 Loan Service: Using Azure Event Grid for event publishing");
       this.eventGridClient = new EventGridPublisherClient(
         config.eventGridEndpoint!,
         "EventGrid",
         new AzureKeyCredential(config.eventGridKey!)
       );
     } else {
-      // Local Development: Use HTTP webhooks
-      console.log("🔗 Using HTTP webhooks for local event publishing");
-      console.log("  Catalog:", config.webhookEndpoints?.catalogService);
-      console.log("  Reservation:", config.webhookEndpoints?.reservationService);
-      console.log("  Staff:", config.webhookEndpoints?.staffService);
+      console.log("🔗 Loan Service: Using HTTP webhooks for local event publishing");
+      console.log("  Reservation webhook:", config.webhookEndpoints?.reservationService);
       this.webhookClient = new WebhookEventPublisher();
     }
   }
@@ -38,7 +45,7 @@ export class LoanEventPublisher implements ILoanEventPublisher {
 
     await this.eventGridClient.send([
       {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         eventType,
         subject: `LoanService/loans/${data.id}`,
         data,
@@ -48,72 +55,30 @@ export class LoanEventPublisher implements ILoanEventPublisher {
     ]);
   }
 
-  async publishLoanCreated(loan: LoanRecord): Promise<void> {
+  /**
+   * Generic publish method used by use cases.
+   * Only "Loan.Created" and "Loan.Cancelled" are emitted from this service.
+   */
+  async publish(eventType: string, data: LoanRecord): Promise<void> {
     if (this.useEventGrid) {
-      await this.sendEventGrid("Loan.Created", {
-        id: loan.id,
-        userId: loan.userId,
-        deviceId: loan.deviceId,
-        status: loan.status,
-        createdAt: loan.createdAt
-      });
-    } else {
-      // Send to Catalog and Reservation services via webhook
-      const catalogUrl = EventPublisherFactory.getWebhookUrl("catalog");
-      const reservationUrl = EventPublisherFactory.getWebhookUrl("reservation");
-      
-      if (catalogUrl) {
-        await this.webhookClient!.publishLoanCreated(loan, catalogUrl);
-      }
-      if (reservationUrl) {
-        await this.webhookClient!.publishLoanCreated(loan, reservationUrl);
-      }
+      await this.sendEventGrid(eventType, data);
+      return;
     }
-  }
 
-  async publishLoanCancelled(loan: LoanRecord): Promise<void> {
-    if (this.useEventGrid) {
-      await this.sendEventGrid("Loan.Cancelled", {
-        id: loan.id,
-        userId: loan.userId,
-        deviceId: loan.deviceId,
-        status: loan.status,
-        cancelledAt: loan.cancelledAt,
-        notes: loan.notes
-      });
-    } else {
-      const catalogUrl = EventPublisherFactory.getWebhookUrl("catalog");
-      const reservationUrl = EventPublisherFactory.getWebhookUrl("reservation");
-      
-      if (catalogUrl) {
-        await this.webhookClient!.publishLoanCancelled(loan, catalogUrl);
-      }
-      if (reservationUrl) {
-        await this.webhookClient!.publishLoanCancelled(loan, reservationUrl);
-      }
+    // Local dev – send only to Reservation Service (the next step in pipeline).
+    const reservationUrl = EventPublisherFactory.getWebhookUrl("reservation");
+
+    if (!reservationUrl || !this.webhookClient) {
+      console.warn("No reservation webhook configured; skipping local event publish.");
+      return;
     }
-  }
 
-  async publishLoanReturned(loan: LoanRecord): Promise<void> {
-    if (this.useEventGrid) {
-      await this.sendEventGrid("Loan.Returned", {
-        id: loan.id,
-        userId: loan.userId,
-        deviceId: loan.deviceId,
-        reservationId: loan.reservationId,
-        status: loan.status,
-        returnedAt: loan.returnedAt
-      });
+    if (eventType === "Loan.Created") {
+      await this.webhookClient.publishLoanCreated(data, reservationUrl);
+    } else if (eventType === "Loan.Cancelled") {
+      await this.webhookClient.publishLoanCancelled(data, reservationUrl);
     } else {
-      const catalogUrl = EventPublisherFactory.getWebhookUrl("catalog");
-      const staffUrl = EventPublisherFactory.getWebhookUrl("staff");
-      
-      if (catalogUrl) {
-        await this.webhookClient!.publishLoanReturned(loan, catalogUrl);
-      }
-      if (staffUrl) {
-        await this.webhookClient!.publishLoanReturned(loan, staffUrl);
-      }
+      console.log(`LoanEventPublisher: ignoring unknown eventType "${eventType}" in local mode`);
     }
   }
 }

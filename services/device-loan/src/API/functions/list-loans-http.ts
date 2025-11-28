@@ -1,39 +1,27 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
+// src/API/functions/list-loans-http.ts
+
+import { app, HttpRequest, HttpResponseInit } from "@azure/functions";
 import { appServices } from "../../appServices";
 
-/**
- * GET /loans?userId={userId}&status={status}
- * Lists loans filtered by userId and/or status
- */
-export async function listLoansHttp(req: HttpRequest, ctx: InvocationContext): Promise<HttpResponseInit> {
+export async function listLoansHttp(req: HttpRequest): Promise<HttpResponseInit> {
   try {
     const userId = req.query.get("userId");
-    const status = req.query.get("status");
-    
-    const loans = await appServices.listLoansHandler.execute({ userId, status });
 
-    ctx.log(`Retrieved ${loans.length} loans`);
+    if (!userId) {
+      return { status: 400, jsonBody: { error: "userId is required" } };
+    }
 
-    return {
-      status: 200,
-      jsonBody: {
-        success: true,
-        count: loans.length,
-        data: loans
-      }
-    };
+    const loans = await appServices.listLoansHandler.execute({ userId });
+
+    return { status: 200, jsonBody: loans };
   } catch (err: any) {
-    ctx.error("Error listing loans:", err);
-    return {
-      status: 500,
-      jsonBody: { error: err.message }
-    };
+    return { status: 500, jsonBody: { error: err.message } };
   }
 }
 
-app.http("listLoansHttp", {
+app.http("list-loans-http", {
   methods: ["GET"],
-  route: "loans",
+  route: "loan/list",
   authLevel: "anonymous",
   handler: listLoansHttp,
 });

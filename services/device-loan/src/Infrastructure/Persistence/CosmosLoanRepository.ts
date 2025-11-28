@@ -1,83 +1,54 @@
+// src/Infrastructure/Persistence/CosmosLoanRepository.ts
+import { Container } from "@azure/cosmos";
 import { ILoanRepository } from "../../Application/Interfaces/ILoanRepository";
 import { LoanRecord } from "../../Domain/Entities/LoanRecord";
-import { LoanStatus } from "../../Domain/Enums/LoanStatus";
 import { CosmosClientFactory } from "../Config/CosmosClientFactory";
 
 export class CosmosLoanRepository implements ILoanRepository {
-  private container;
+  private container: Container;
 
   constructor() {
-    this.container = CosmosClientFactory.getContainer(
-      process.env.COSMOS_DB_DATABASE ,
-      process.env.COSMOS_DB_CONTAINER 
-    );
+    const dbName = process.env.COSMOS_DB_DATABASE_NAME || "DeviceLoanDB";
+    const containerName = process.env.COSMOS_DB_CONTAINER_NAME || "Loans";
+
+    this.container = CosmosClientFactory.getContainer(dbName, containerName);
   }
 
-  async create(loan: LoanRecord): Promise<LoanRecord> {
+  async create(loan: LoanRecord): Promise<void> {
     await this.container.items.create(loan);
-    return loan;
   }
 
-  async update(loan: LoanRecord): Promise<LoanRecord> {
-    loan.updatedAt = new Date().toISOString();
-    await this.container.items.upsert(loan);
-    return loan;
+  async update(loan: LoanRecord): Promise<void> {
+    await this.container.item(loan.id, loan.userId).replace(loan);
   }
 
-  async findById(id: string): Promise<LoanRecord | null> {
-    try {
-      const { resource } = await this.container.item(id, id).read();
-      return resource as LoanRecord;
-    } catch {
-      return null;
-    }
+  async getById(loanId: string): Promise<LoanRecord | null> {
+    const query = {
+      query: "SELECT * FROM c WHERE c.id = @id",
+      parameters: [{ name: "@id", value: loanId }],
+    };
+
+    const { resources } = await this.container.items.query<LoanRecord>(query).fetchAll();
+    return resources[0] || null;
   }
 
-  async findByReservationId(reservationId: string): Promise<LoanRecord | null> {
-    const query = `
-      SELECT * FROM c
-      WHERE c.reservationId = @reservationId
-      OFFSET 0 LIMIT 1
-    `;
-
-    const { resources } = await this.container.items.query({
-      query,
-      parameters: [{ name: "@reservationId", value: reservationId }],
-    }).fetchAll();
-
-    return resources[0] ?? null;
-  }
-
-  async findByUserId(userId: string): Promise<LoanRecord[]> {
-    const query = `
-      SELECT * FROM c
-      WHERE c.userId = @userId
-    `;
-
-    const { resources } = await this.container.items.query({
-      query,
+  async listByUser(userId: string): Promise<LoanRecord[]> {
+    const query = {
+      query: "SELECT * FROM c WHERE c.userId = @userId ORDER BY c.createdAt DESC",
       parameters: [{ name: "@userId", value: userId }],
-    }).fetchAll();
+    };
 
-    return resources as LoanRecord[];
+    const { resources } = await this.container.items.query<LoanRecord>(query).fetchAll();
+    return resources;
   }
 
-  async listAll(): Promise<LoanRecord[]> {
-    const { resources } = await this.container.items.readAll().fetchAll();
-    return resources as LoanRecord[];
-  }
+  async getByReservation(reservationId: string): Promise<LoanRecord | null> {
+    const query = {
+      query: "SELECT * FROM c WHERE c.reservationId = @resId",
+      parameters: [{ name: "@resId", value: reservationId }],
+    };
 
-  async listByStatus(status: LoanStatus): Promise<LoanRecord[]> {
-    const query = `
-      SELECT * FROM c
-      WHERE c.status = @status
-    `;
-
-    const { resources } = await this.container.items.query({
-      query,
-      parameters: [{ name: "@status", value: status }],
-    }).fetchAll();
-
-    return resources as LoanRecord[];
+    const { resources } = await this.container.items.query<LoanRecord>(query).fetchAll();
+    return resources[0] || null;
   }
 }

@@ -1,16 +1,16 @@
-// src/API/functions/staffEventsHttp.ts
+// src/API/functions/reservationEventsHttp.ts
 
 import { app, HttpRequest, HttpResponseInit } from "@azure/functions";
 import { appServices } from "../../appServices";
 
-export async function staffEventsHttp(req: HttpRequest): Promise<HttpResponseInit> {
+export async function reservationEventsHttp(req: HttpRequest): Promise<HttpResponseInit> {
   try {
     const body = await req.json();
     const events = Array.isArray(body) ? body : [body];
 
     for (const evt of events) {
       const { eventType, data } = evt;
-      await appServices.staffEventsProcessor.handleEvent(eventType, data);
+      await appServices.reservationEventsProcessor.handleConfirmed(data);
     }
 
     return { status: 200 };
@@ -19,9 +19,9 @@ export async function staffEventsHttp(req: HttpRequest): Promise<HttpResponseIni
   }
 }
 
-app.http("staff-events-http", {
+app.http("reservation-events-http", {
   methods: ["POST"],
-  route: "events/staff",
+  route: "events/reservations",
   authLevel: "anonymous",
-  handler: staffEventsHttp,
+  handler: reservationEventsHttp,
 });

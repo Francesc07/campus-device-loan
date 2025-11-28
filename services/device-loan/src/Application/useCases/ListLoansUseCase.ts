@@ -1,24 +1,12 @@
+// src/Application/UseCases/ListLoansUseCase.ts
 import { ILoanRepository } from "../Interfaces/ILoanRepository";
-import { ListLoansFilter } from "../Dtos/ListLoansDto";
-import { LoanRecord } from "../../Domain/Entities/LoanRecord";
+import { ListLoansDto } from "../Dtos/ListLoansDto";
 
 export class ListLoansUseCase {
-  constructor(private readonly repo: ILoanRepository) {}
+  constructor(private readonly loanRepo: ILoanRepository) {}
 
-  async execute(filter: ListLoansFilter): Promise<LoanRecord[]> {
-    if (filter.loanId) {
-      const loan = await this.repo.findById(filter.loanId);
-      return loan ? [loan] : [];
-    }
-
-    if (filter.userId) {
-      return this.repo.findByUserId(filter.userId);
-    }
-
-    if (filter.status) {
-      return this.repo.listByStatus(filter.status as any);
-    }
-
-    return this.repo.listAll();
+  async execute(dto: ListLoansDto) {
+    // For now we ignore status filter and just list by user.
+    return this.loanRepo.listByUser(dto.userId);
   }
 }

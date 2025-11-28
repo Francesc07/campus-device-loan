@@ -1,4 +1,4 @@
-# GitHub Actions CI/CD Setup for Device Loan Service
+-# GitHub Actions CI/CD Setup for Device Loan Service
 
 ## Overview
 
