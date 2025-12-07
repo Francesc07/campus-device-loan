@@ -20,17 +20,16 @@ project.lock.json
 /data
 .secrets
 appsettings.json
-/local.settings.dev.json
-/local.settings.test.json
-/local.settings.prod.json
-local.settings.dev.json
-local.settings.test.json
-local.settings.prod.json
+/local.settings.json
+/appsettings.*.json
+/local.settings.*.json
+local.settings.json
+
 
 # Environment files with actual secrets
 .env
 .env.*.local
-.env.settings.*.json
+.env.settings.json
 
 node_modules
 dist
