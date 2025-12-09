@@ -44,6 +44,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ${{ env.SERVICE_PATH }}/package-lock.json
 
+      - name: 🧹 Clean cache and build directories
+        working-directory: ${{ env.SERVICE_PATH }}
+        run: |
+          rm -rf node_modules/.cache
+          rm -rf dist
+          npm cache clean --force || true
+
       - name: 📦 Install dependencies
         working-directory: ${{ env.SERVICE_PATH }}
         run: npm ci
@@ -86,6 +93,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: ${{ env.SERVICE_PATH }}/package-lock.json
+
+      - name: 🧹 Clean build directories
+        working-directory: ${{ env.SERVICE_PATH }}
+        run: rm -rf dist node_modules/.cache
 
       - name: 📦 Install dependencies
         working-directory: ${{ env.SERVICE_PATH }}
