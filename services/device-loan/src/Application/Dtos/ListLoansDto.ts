@@ -1,5 +1,7 @@
+import { LoanStatus } from "../../Domain/Enums/LoanStatus";
+
 export interface ListLoansDto {
   loanId?: string;
   userId?: string;
-  status?: string;      // Pending, Active, Cancelled, Returned, Overdue
+  status?: LoanStatus;      // Pending, Active, Cancelled, Returned, Overdue
 }

@@ -1,0 +1,1 @@
+{"version":3,"file":"ReservationEventsProcessor.js","sourceRoot":"","sources":["ReservationEventsProcessor.ts"],"names":[],"mappings":";;;AAIA,MAAa,0BAA0B;IACrC,YACmB,mBAAwC;QAAxC,wBAAmB,GAAnB,mBAAmB,CAAqB;IACxD,CAAC;IAEJ;;OAEG;IACH,KAAK,CAAC,eAAe,CAAC,IAAyB;QAC7C,MAAM,IAAI,CAAC,mBAAmB,CAAC,OAAO,CAAC,IAAI,CAAC,CAAC;IAC/C,CAAC;CACF;AAXD,gEAWC"}

@@ -13,6 +13,7 @@ export async function deviceSyncEventGrid(event: any, ctx: InvocationContext): P
     const repo = new DeviceSnapshotRepository();
 
     switch (event.eventType) {
+      case "Device.Snapshot":
       case "Device.Created":
       case "Device.Updated":
         // Upsert device snapshot
@@ -46,6 +47,6 @@ export async function deviceSyncEventGrid(event: any, ctx: InvocationContext): P
   }
 }
 
-app.eventGrid("deviceSyncEventGrid", {
+app.eventGrid("device-sync-http", {
   handler: deviceSyncEventGrid,
 });

@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { appServices } from "../../appServices";
 import { CreateLoanDto } from "../../Application/Dtos/CreateLoanDto";
+import { requireAuth } from "../../Infrastructure/Auth/auth0Validation";
 
 /**
  * POST /api/loan/create
@@ -10,30 +11,44 @@ export async function createLoanHttp(
   req: HttpRequest,
   ctx: InvocationContext
 ): Promise<HttpResponseInit> {
+  // Validate authentication and require loan:devices permission
+  const authResult = await requireAuth(req, ctx, ["loan:devices"]);
+  if ("status" in authResult) {
+    return authResult as HttpResponseInit; // Return 401 or 403 error response
+  }
+
   try {
     const body = (await req.json()) as CreateLoanDto;
 
-    const { userId, deviceId, reservationId } = body;
+    const { userId, deviceId } = body;
 
-    if (!userId || !deviceId || !reservationId) {
+    if (!userId || !deviceId ) {
       return {
         status: 400,
-        jsonBody: { error: "userId, deviceId and reservationId are required" }
+        jsonBody: { error: "userId and deviceId are required" }
       };
     }
 
     const result = await appServices.createLoanHandler.execute({
       userId,
       deviceId,
-      reservationId
+      
     });
 
+    // Provide different messages based on loan status
+    const isWaitlisted = result.status === "Waitlisted";
+    const statusCode = isWaitlisted ? 202 : 201; // 202 Accepted for waitlist
+    const message = isWaitlisted 
+      ? "Device is currently unavailable. Your request has been added to the waitlist."
+      : "Loan request created successfully";
+
     return {
-      status: 201,
+      status: statusCode,
       jsonBody: {
         success: true,
-        message: "Loan created successfully",
-        data: result
+        message,
+        data: result,
+        isWaitlisted
       }
     };
     

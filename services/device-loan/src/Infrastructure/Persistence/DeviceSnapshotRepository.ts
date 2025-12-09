@@ -1,3 +1,4 @@
+// src/Infrastructure/Persistence/DeviceSnapshotRepository.ts
 import { Container } from "@azure/cosmos";
 import { DeviceSnapshot } from "../Models/DeviceSnapshot";
 import { CosmosClientFactory } from "../Config/CosmosClientFactory";
@@ -8,7 +9,8 @@ export class DeviceSnapshotRepository implements IDeviceSnapshotRepository {
 
   constructor() {
     const databaseId = process.env.COSMOS_DB_DATABASE_NAME || "DeviceLoanDB";
-    const containerId = process.env.COSMOS_DEVICESNAPSHOTS_CONTAINER_NAME || "DeviceSnapshots";
+    const containerId =
+      process.env.DEVICE_SNAPSHOTS_CONTAINER_NAME || "DeviceSnapshots";
 
     this.container = CosmosClientFactory.getClient()
       .database(databaseId)
@@ -25,21 +27,29 @@ export class DeviceSnapshotRepository implements IDeviceSnapshotRepository {
     try {
       await this.container.item(deviceId, deviceId).delete();
     } catch {
-      // Ignore if device doesn't exist
+      // ignore if it doesn't exist
     }
   }
 
   /** List all devices */
   async listDevices(): Promise<DeviceSnapshot[]> {
-    const query = { query: "SELECT * FROM c ORDER BY c.brand, c.model" };
-    const { resources } = await this.container.items.query<DeviceSnapshot>(query).fetchAll();
-    return resources;
-  }
+  const query = { query: "SELECT * FROM c" };
 
-  /** Get a device snapshot */
+  const { resources } =
+    await this.container.items.query<DeviceSnapshot>(query).fetchAll();
+
+  // sort in memory
+  return resources.sort((a, b) =>
+    `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`)
+  );
+}
+
+
+  /** Get a device snapshot by id */
   async getSnapshot(deviceId: string): Promise<DeviceSnapshot | null> {
     try {
-      const { resource } = await this.container.item(deviceId, deviceId).read<DeviceSnapshot>();
+      const { resource } =
+        await this.container.item(deviceId, deviceId).read<DeviceSnapshot>();
       return resource ?? null;
     } catch {
       return null;

@@ -1,84 +1,79 @@
-// src/Infrastructure/EventGrid/LoanEventPublisher.ts
-import { EventGridPublisherClient, AzureKeyCredential } from "@azure/eventgrid";
-import { randomUUID } from "crypto";
 import { ILoanEventPublisher } from "../../Application/Interfaces/ILoanEventPublisher";
 import { LoanRecord } from "../../Domain/Entities/LoanRecord";
-import { EventPublisherFactory } from "../Config/EventPublisherFactory";
-import { WebhookEventPublisher } from "./WebhookEventPublisher";
+import crypto from "crypto";
 
-/**
- * LoanEventPublisher
- *  - In prod/test → publishes events to Azure Event Grid
- *  - In local dev → publishes via HTTP webhooks to other services
- *
- * **Loan Service is only responsible for:**
- *   - Loan.Created
- *   - Loan.Cancelled
- */
+// Use global fetch available in Node.js v18+
+
 export class LoanEventPublisher implements ILoanEventPublisher {
-  private eventGridClient?: EventGridPublisherClient<any>;
-  private webhookClient?: WebhookEventPublisher;
-  private useEventGrid: boolean;
+  private mode: "azure" | "local";
+  private topicEndpoint: string;
+  private topicKey: string;
 
   constructor() {
-    const config = EventPublisherFactory.getConfig();
-    this.useEventGrid = config.useEventGrid;
+    this.mode = (process.env.ENVIRONMENT === "dev-cloud" ||
+      process.env.ENVIRONMENT === "test-cloud" ||
+      process.env.ENVIRONMENT === "prod-cloud")
+      ? "azure"
+      : "local";
 
-    if (this.useEventGrid) {
-      console.log("📡 Loan Service: Using Azure Event Grid for event publishing");
-      this.eventGridClient = new EventGridPublisherClient(
-        config.eventGridEndpoint!,
-        "EventGrid",
-        new AzureKeyCredential(config.eventGridKey!)
-      );
-    } else {
-      console.log("🔗 Loan Service: Using HTTP webhooks for local event publishing");
-      console.log("  Reservation webhook:", config.webhookEndpoints?.reservationService);
-      this.webhookClient = new WebhookEventPublisher();
-    }
-  }
+    this.topicEndpoint = process.env.EVENTGRID_TOPIC_ENDPOINT || "";
+    this.topicKey = process.env.EVENTGRID_TOPIC_KEY || "";
 
-  private async sendEventGrid(eventType: string, data: any) {
-    if (!this.eventGridClient) {
-      throw new Error("Event Grid client not initialized");
+    if (this.mode === "azure" && (!this.topicEndpoint || !this.topicKey)) {
+      throw new Error("❌ Missing Event Grid settings for Azure mode.");
     }
 
-    await this.eventGridClient.send([
-      {
-        id: randomUUID(),
-        eventType,
-        subject: `LoanService/loans/${data.id}`,
-        data,
-        dataVersion: "1.0",
-        eventTime: new Date().toISOString(),
-      },
-    ]);
+    console.log(`📡 LoanEventPublisher running in mode: ${this.mode}`);
   }
 
   /**
-   * Generic publish method used by use cases.
-   * Only "Loan.Created" and "Loan.Cancelled" are emitted from this service.
+   * PUBLIC: Implements ILoanEventPublisher.publish.
+   * This is the required method for dependency injection.
    */
-  async publish(eventType: string, data: LoanRecord): Promise<void> {
-    if (this.useEventGrid) {
-      await this.sendEventGrid(eventType, data);
-      return;
+  async publish(
+    eventType: "Loan.Created" | "Loan.Cancelled",
+    data: LoanRecord
+  ): Promise<void> {
+    if (this.mode === "azure") {
+      return this.publishToEventGrid(eventType, data);
+    }
+    return this.publishLocal(eventType, data);
+  }
+
+  /** --- INTERNAL: Publish to Azure Event Grid --- */
+  private async publishToEventGrid(eventType: string, data: LoanRecord): Promise<void> {
+    const events = [
+      {
+        id: crypto.randomUUID(),
+        eventType,
+        subject: `loan/${eventType}`,
+        eventTime: new Date().toISOString(),
+        dataVersion: "1.0",
+        data // The data is the LoanRecord object
+      },
+    ];
+
+    const response = await fetch(this.topicEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "aeg-sas-key": this.topicKey,
+      },
+      body: JSON.stringify(events),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error(`❌ Failed to publish ${eventType}:`, err);
+      throw new Error(`Event Grid error: ${response.status}`);
     }
 
-    // Local dev – send only to Reservation Service (the next step in pipeline).
-    const reservationUrl = EventPublisherFactory.getWebhookUrl("reservation");
+    console.log(`✅ Event published → ${eventType}`);
+  }
 
-    if (!reservationUrl || !this.webhookClient) {
-      console.warn("No reservation webhook configured; skipping local event publish.");
-      return;
-    }
-
-    if (eventType === "Loan.Created") {
-      await this.webhookClient.publishLoanCreated(data, reservationUrl);
-    } else if (eventType === "Loan.Cancelled") {
-      await this.webhookClient.publishLoanCancelled(data, reservationUrl);
-    } else {
-      console.log(`LoanEventPublisher: ignoring unknown eventType "${eventType}" in local mode`);
-    }
+  /** --- INTERNAL: Local development mode (no-op) --- */
+  private async publishLocal(eventType: string, data: LoanRecord): Promise<void> {
+    console.log(`🔄 LOCAL MODE → Event skipped: ${eventType}`);
+    console.log(JSON.stringify(data, null, 2));
   }
 }

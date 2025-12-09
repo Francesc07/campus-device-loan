@@ -3,5 +3,6 @@ export enum LoanStatus {
   Active = "Active",
   Cancelled = "Cancelled",
   Returned = "Returned",
-  Overdue = "Overdue"
+  Overdue = "Overdue",
+  Waitlisted = "Waitlisted"
 }

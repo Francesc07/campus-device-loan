@@ -1,14 +1,14 @@
 {
   "name": "device-loan",
   "version": "1.0.0",
-  "main": "dist/src/functionApp.js",
+  "main": "dist/functionApp.js",
   "scripts": {
     "build": "tsc",
     "clean": "rimraf dist",
     "watch": "tsc --watch",
-    "prestart": "npm run build",
-    "start": "func start --typescript",
-    "seed:devices": "ts-node tools/seed-device-snapshots.ts"
+    "prestart": "npm run clean && npm run build",
+    "start": "func start --typescript"
+  
   },
   "keywords": [],
   "author": "",

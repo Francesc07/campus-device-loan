@@ -1,6 +1,6 @@
 export interface ReservationEventDTO {
   eventType: "Reservation.Confirmed" | "Reservation.Cancelled";
-  reservationId: string;
+  reservationId?: string;
   deviceId: string;
   userId: string;
   reason?: string;

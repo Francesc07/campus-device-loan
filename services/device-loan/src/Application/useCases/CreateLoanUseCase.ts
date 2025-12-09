@@ -16,13 +16,17 @@ export class CreateLoanUseCase {
   async execute(dto: CreateLoanDto): Promise<LoanRecord> {
     const device = await this.snapshotRepo.getSnapshot(dto.deviceId);
 
-    if (!device || !device.availableCount || device.availableCount <= 0) {
-      throw new Error("Device is not available for loan.");
+    if (!device) {
+      throw new Error("Device not found.");
     }
 
     const now = new Date();
     const due = new Date();
     due.setDate(due.getDate() + 2); // standard 2-day loan
+
+    // Check if device is available
+    const isAvailable = device.availableCount > 0;
+    const status = isAvailable ? LoanStatus.Pending : LoanStatus.Waitlisted;
 
     const loan: LoanRecord = {
       id: uuidv4(),
@@ -31,14 +35,22 @@ export class CreateLoanUseCase {
       deviceId: dto.deviceId,
       startDate: now.toISOString(),
       dueDate: due.toISOString(),
-      status: LoanStatus.Pending,
+      status: status,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString()
     };
 
     await this.loanRepo.create(loan);
 
-    await this.eventPublisher.publish("Loan.Created", loan);
+    // Publish appropriate event based on status
+    if (isAvailable) {
+      await this.eventPublisher.publish("Loan.Created", loan);
+    } else {
+      await this.eventPublisher.publish("Loan.Waitlisted", {
+        ...loan,
+        message: `Device ${device.brand} ${device.model} is currently unavailable. Request added to waitlist.`
+      });
+    }
 
     return loan;
   }

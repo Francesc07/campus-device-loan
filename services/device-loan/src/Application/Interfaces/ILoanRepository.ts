@@ -7,4 +7,5 @@ export interface ILoanRepository {
   getById(loanId: string): Promise<LoanRecord | null>;
   listByUser(userId: string): Promise<LoanRecord[]>;
   getByReservation(reservationId: string): Promise<LoanRecord | null>;
+  getByDeviceAndStatus(deviceId: string, status: LoanStatus): Promise<LoanRecord[]>;
 }

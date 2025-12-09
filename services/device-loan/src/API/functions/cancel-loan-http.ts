@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import { appServices } from "../../appServices";
 import { CancelLoanDto } from "../../Application/Dtos/CancelLoanDto";
+import { requireAuth } from "../../Infrastructure/Auth/auth0Validation";
 
 /**
  * POST /api/loan/cancel
@@ -10,6 +11,12 @@ export async function cancelLoanHttp(
   req: HttpRequest,
   ctx: InvocationContext
 ): Promise<HttpResponseInit> {
+  // Validate authentication and require loan:devices permission
+  const authResult = await requireAuth(req, ctx, ["loan:devices"]);
+  if ("status" in authResult) {
+    return authResult as HttpResponseInit; // Return 401 or 403 error response
+  }
+
   try {
     const body = (await req.json()) as CancelLoanDto;
 

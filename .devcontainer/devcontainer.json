@@ -1,5 +1,5 @@
 {
-  "name": "Campus Device catalog DevContainer",
+  "name": "Campus Deviceloan DevContainer",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20",
   "features": {
     "ghcr.io/devcontainers/features/azure-cli:1": {}
