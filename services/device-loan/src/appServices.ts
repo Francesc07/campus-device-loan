@@ -8,8 +8,7 @@ import { DeviceSnapshotRepository } from "./Infrastructure/Persistence/DeviceSna
 import { LoanEventPublisher } from "./Infrastructure/EventGrid/LoanEventPublisher";
 
 // UseCases
-
-import { CreateLoanUseCase } from "./Application/UseCases/CreateLoanUseCase";
+import {CreateLoanUseCase} from "./Application/UseCases/CreateLoanUseCase";
 import { CancelLoanUseCase } from "./Application/UseCases/CancelLoanUseCase";
 import { ActivateLoanUseCase } from "./Application/UseCases/ActivateLoanUseCase";
 import { ListLoansUseCase } from "./Application/UseCases/ListLoansUseCase";
@@ -18,8 +17,10 @@ import { ListDeviceSnapshotsUseCase } from "./Application/UseCases/ListDeviceSna
 import { GetLoanByIdUseCase } from "./Application/UseCases/GetLoanByIdUseCase";
 import { ProcessWaitlistUseCase } from "./Application/UseCases/ProcessWaitlistUseCase";
 
+
+
 // Handlers
-import { CreateLoanHandler } from "./Application/Handlers/CreateLoanHandler";
+import {CreateLoanHandler} from "./Application/Handlers/CreateLoanHandler";
 import { CancelLoanHandler } from "./Application/Handlers/CancelLoanHandler";
 import { ActivateLoanHandler } from "./Application/Handlers/ActivateLoanHandler";
 import { ListLoansHandler } from "./Application/Handlers/ListLoansHandler";
@@ -38,7 +39,8 @@ import { StaffEventsProcessor } from "./Infrastructure/EventGrid/StaffEventsProc
 
 const loanRepo = new CosmosLoanRepository();
 const snapshotRepo = new DeviceSnapshotRepository();
-const eventPublisher = new LoanEventPublisher();
+const eventPublisher = new LoanEventPublisher();  
+
 
 
 // -----------------------------------------------------------
