@@ -1,0 +1,56 @@
+name: Device Loan - CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'services/device-loan/**'
+      - '.github/workflows/device-loan.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'services/device-loan/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Choose environment to deploy"
+        required: true
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+
+env:
+  NODE_VERSION: "20.x"
+  SERVICE_PATH: "./services/device-loan"
+
+jobs:
+  # ====================================================
+  # 🧪 TEST JOB — Unit, Integration, Concurrency
+  # ====================================================
+  test:
+    name: Run Full Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ${{ env.SERVICE_PATH }}/package-lock.json
+
+      - name: 📦 Install Dependencies
+        working-directory: ${{ env.SERVICE_PATH }}
+        run: npm ci
+
+      - name: 🧪 Unit Tests
+        working-directory: ${{ env.SERVICE_PATH }}
+        run: npm run test:unit
+
+      - name: 🧪 Integration Tests
+        working-directory: ${{
