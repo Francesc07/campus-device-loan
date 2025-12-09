@@ -1,7 +1,7 @@
 // tests/concurrency/IdempotencyTests.test.ts
-import { CreateLoanUseCase } from "../../src/Application/useCases/CreateLoanUseCase";
-import { CancelLoanUseCase } from "../../src/Application/useCases/CancelLoanUseCase";
-import { ActivateLoanUseCase } from "../../src/Application/useCases/ActivateLoanUseCase";
+import { CreateLoanUseCase } from "../../src/Application/UseCases/CreateLoanUseCase";
+import { CancelLoanUseCase } from "../../src/Application/UseCases/CancelLoanUseCase";
+import { ActivateLoanUseCase } from "../../src/Application/UseCases/ActivateLoanUseCase";
 import { MockLoanRepository } from "../mocks/MockLoanRepository";
 import { MockDeviceSnapshotRepository } from "../mocks/MockDeviceSnapshotRepository";
 import { MockLoanEventPublisher } from "../mocks/MockLoanEventPublisher";

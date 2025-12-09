@@ -1,9 +1,9 @@
 // tests/integration/LoanWorkflow.integration.test.ts
-import { CreateLoanUseCase } from "../../src/Application/useCases/CreateLoanUseCase";
-import { CancelLoanUseCase } from "../../src/Application/useCases/CancelLoanUseCase";
-import { ActivateLoanUseCase } from "../../src/Application/useCases/ActivateLoanUseCase";
-import { GetLoanByIdUseCase } from "../../src/Application/useCases/GetLoanByIdUseCase";
-import { ListLoansUseCase } from "../../src/Application/useCases/ListLoansUseCase";
+import { CreateLoanUseCase } from "../../src/Application/UseCases/CreateLoanUseCase";
+import { CancelLoanUseCase } from "../../src/Application/UseCases/CancelLoanUseCase";
+import { ActivateLoanUseCase } from "../../src/Application/UseCases/ActivateLoanUseCase";
+import { GetLoanByIdUseCase } from "../../src/Application/UseCases/GetLoanByIdUseCase";
+import { ListLoansUseCase } from "../../src/Application/UseCases/ListLoansUseCase";
 import { MockLoanRepository } from "../mocks/MockLoanRepository";
 import { MockDeviceSnapshotRepository } from "../mocks/MockDeviceSnapshotRepository";
 import { MockLoanEventPublisher } from "../mocks/MockLoanEventPublisher";

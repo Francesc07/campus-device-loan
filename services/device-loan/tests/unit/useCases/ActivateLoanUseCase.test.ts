@@ -1,5 +1,5 @@
 // tests/unit/useCases/ActivateLoanUseCase.test.ts
-import { ActivateLoanUseCase } from "../../../src/Application/useCases/ActivateLoanUseCase";
+import { ActivateLoanUseCase } from "../../../src/Application/UseCases/ActivateLoanUseCase";
 import { MockLoanRepository } from "../../mocks/MockLoanRepository";
 import { ReservationEventDTO } from "../../../src/Application/Dtos/ReservationEventDTO";
 import { LoanStatus } from "../../../src/Domain/Enums/LoanStatus";

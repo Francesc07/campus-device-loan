@@ -1,5 +1,5 @@
 // tests/concurrency/ConcurrentLoanCreation.test.ts
-import { CreateLoanUseCase } from "../../src/Application/useCases/CreateLoanUseCase";
+import { CreateLoanUseCase } from "../../src/Application/UseCases/CreateLoanUseCase";
 import { MockLoanRepository } from "../mocks/MockLoanRepository";
 import { MockDeviceSnapshotRepository } from "../mocks/MockDeviceSnapshotRepository";
 import { MockLoanEventPublisher } from "../mocks/MockLoanEventPublisher";

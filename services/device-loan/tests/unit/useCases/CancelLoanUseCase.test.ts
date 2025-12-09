@@ -1,5 +1,5 @@
 // tests/unit/useCases/CancelLoanUseCase.test.ts
-import { CancelLoanUseCase } from "../../../src/Application/useCases/CancelLoanUseCase";
+import { CancelLoanUseCase } from "../../../src/Application/UseCases/CancelLoanUseCase";
 import { MockLoanRepository } from "../../mocks/MockLoanRepository";
 import { CancelLoanDto } from "../../../src/Application/Dtos/CancelLoanDto";
 import { LoanStatus } from "../../../src/Domain/Enums/LoanStatus";
