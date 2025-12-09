@@ -416,6 +416,9 @@ services/device-loan/
 - **.env.dev** - DEV environment variables
 - **.env.test** - TEST environment variables
 - **.env.prod** - PROD environment variables
+- **AUTH0_SETUP.md** - Complete Auth0 configuration guide
+
+> ⚠️ **Important**: Auth0 authentication requires `AUTH0_DOMAIN` and `AUTH0_AUDIENCE` to be configured. See [AUTH0_SETUP.md](./AUTH0_SETUP.md) for detailed setup instructions.
 
 ### local.settings.*.json at a glance
 
