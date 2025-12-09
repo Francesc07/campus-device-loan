@@ -205,8 +205,9 @@ jobs:
       - name: 🚀 Deploy to TEST Function App
         run: |
           az functionapp deployment source config-zip \
-            -g CampusDeviceLender-test-Ab07-rg \
-            -n deviceloan-test-ab07-func \
+            -g CampusDeviceLender-test-new-Ab07-rg \
+            -n devicereservation-test-new-func \
+            
             --src deploy.zip
 
       - name: 🔍 TEST Health Check
