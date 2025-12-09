@@ -14,7 +14,7 @@ param functionAppRuntime string = 'node'
 param functionAppRuntimeVersion string = '~4'
 
 @description('Node.js version')
-param nodeVersion string = '18'
+param nodeVersion string = '22'
 
 // Variables
 var resourceGroupName = 'deviceloan-${environment}-${baseName}-rg'
@@ -278,6 +278,96 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
   }
 }
 
+// Metric Alerts for High Error Rate
+resource highErrorRateAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: '${functionAppName}-high-error-rate'
+  location: 'global'
+  properties: {
+    description: 'Alert when HTTP 5xx errors exceed 5 in 5 minutes'
+    severity: 2
+    enabled: true
+    scopes: [
+      functionApp.id
+    ]
+    evaluationFrequency: 'PT1M'
+    windowSize: 'PT5M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          criterionType: 'StaticThresholdCriterion'
+          name: 'ErrorCount'
+          metricName: 'Http5xx'
+          operator: 'GreaterThan'
+          threshold: 5
+          timeAggregation: 'Total'
+        }
+      ]
+    }
+    actions: []
+  }
+}
+
+// Metric Alerts for High Response Time
+resource highLatencyAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: '${functionAppName}-high-latency'
+  location: 'global'
+  properties: {
+    description: 'Alert when average response time exceeds 3 seconds'
+    severity: 3
+    enabled: true
+    scopes: [
+      functionApp.id
+    ]
+    evaluationFrequency: 'PT1M'
+    windowSize: 'PT5M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          criterionType: 'StaticThresholdCriterion'
+          name: 'ResponseTime'
+          metricName: 'HttpResponseTime'
+          operator: 'GreaterThan'
+          threshold: 3000
+          timeAggregation: 'Average'
+        }
+      ]
+    }
+    actions: []
+  }
+}
+
+// Metric Alert for Memory Usage
+resource highMemoryAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: '${functionAppName}-high-memory'
+  location: 'global'
+  properties: {
+    description: 'Alert when memory usage exceeds 80%'
+    severity: 3
+    enabled: true
+    scopes: [
+      functionApp.id
+    ]
+    evaluationFrequency: 'PT1M'
+    windowSize: 'PT5M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          criterionType: 'StaticThresholdCriterion'
+          name: 'MemoryUsage'
+          metricName: 'MemoryWorkingSet'
+          operator: 'GreaterThan'
+          threshold: 838860800
+          timeAggregation: 'Average'
+        }
+      ]
+    }
+    actions: []
+  }
+}
+
 // Outputs
 output functionAppName string = functionApp.name
 output functionAppUrl string = 'https://${functionApp.properties.defaultHostName}'
@@ -286,5 +376,6 @@ output cosmosEndpoint string = cosmosAccount.properties.documentEndpoint
 output resourceGroupName string = resourceGroupName
 output storageAccountName string = storageAccount.name
 output applicationInsightsName string = applicationInsights.name
+output applicationInsightsConnectionString string = applicationInsights.properties.ConnectionString
 output eventGridTopicName string = eventGridTopic.name
 output eventGridTopicEndpoint string = eventGridTopic.properties.endpoint
