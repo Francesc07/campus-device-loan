@@ -35,12 +35,18 @@ export class CosmosLoanRepository implements ILoanRepository {
 
   async listByUser(userId: string): Promise<LoanRecord[]> {
     const query = {
-      query: "SELECT * FROM c WHERE c.userId = @userId ORDER BY c.status = 'Waitlisted' DESC, c.createdAt DESC",
+      query: "SELECT * FROM c WHERE c.userId = @userId ORDER BY c.createdAt DESC",
       parameters: [{ name: "@userId", value: userId }],
     };
 
     const { resources } = await this.container.items.query<LoanRecord>(query).fetchAll();
-    return resources;
+    
+    // Sort in memory to prioritize Waitlisted loans, then by date
+    return resources.sort((a, b) => {
+      if (a.status === 'Waitlisted' && b.status !== 'Waitlisted') return -1;
+      if (a.status !== 'Waitlisted' && b.status === 'Waitlisted') return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
   }
 
   async getByReservation(reservationId: string): Promise<LoanRecord | null> {

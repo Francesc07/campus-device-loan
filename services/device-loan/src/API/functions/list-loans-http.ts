@@ -21,11 +21,13 @@ export async function listLoansHttp(
       return { status: 400, jsonBody: { error: "userId is required" } };
     }
 
+    ctx.log(`✅ Auth passed. Fetching loans for userId: ${userId}`);
     const loans = await appServices.listLoansHandler.execute({ userId });
 
     return { status: 200, jsonBody: loans };
   } catch (err: any) {
-    return { status: 500, jsonBody: { error: err.message } };
+    ctx.error(`❌ Error in list-loans: ${err.message}`, err);
+    return { status: 500, jsonBody: { error: err.message, details: err.stack } };
   }
 }
 
