@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Choose environment to deploy"
+        description: 'Deploy to specific environment'
         required: true
         type: choice
         options:
@@ -22,35 +22,233 @@ on:
           - prod
 
 env:
-  NODE_VERSION: "20.x"
-  SERVICE_PATH: "./services/device-loan"
+  NODE_VERSION: '20.x'
+  SERVICE_PATH: './services/device-loan'
 
 jobs:
-  # ====================================================
-  # 🧪 TEST JOB — Unit, Integration, Concurrency
-  # ====================================================
+  # ======================================================
+  # 🧪 TEST JOB
+  # ======================================================
   test:
-    name: Run Full Test Suite
+    name: Test Suite
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔧 Setup Node
+      - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          cache: 'npm'
           cache-dependency-path: ${{ env.SERVICE_PATH }}/package-lock.json
 
-      - name: 📦 Install Dependencies
+      - name: 📦 Install dependencies
         working-directory: ${{ env.SERVICE_PATH }}
         run: npm ci
 
-      - name: 🧪 Unit Tests
+      - name: 🧪 Run unit tests
         working-directory: ${{ env.SERVICE_PATH }}
-        run: npm run test:unit
+        run: npm run test:unit -- --ci --maxWorkers=2
 
-      - name: 🧪 Integration Tests
-        working-directory: ${{
+      - name: 🧪 Run integration tests
+        working-directory: ${{ env.SERVICE_PATH }}
+        run: npm run test:integration -- --ci --maxWorkers=2
+
+      - name: 🧪 Run concurrency tests
+        working-directory: ${{ env.SERVICE_PATH }}
+        run: npm run test:concurrency -- --ci --maxWorkers=2
+
+      - name: 📦 Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-loan-coverage
+          path: ${{ env.SERVICE_PATH }}/coverage
+          retention-days: 7
+
+  # ======================================================
+  # 🏗️ BUILD JOB
+  # ======================================================
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.SERVICE_PATH }}/package-lock.json
+
+      - name: 📦 Install dependencies
+        working-directory: ${{ env.SERVICE_PATH }}
+        run: npm ci
+
+      - name: 🏗️ Build application
+        working-directory: ${{ env.SERVICE_PATH }}
+        run: npm run build
+
+      - name: 🔒 Security audit
+        working-directory: ${{ env.SERVICE_PATH }}
+        run: npm audit --audit-level=high || true
+
+      - name: 📦 Package for deployment
+        working-directory: ${{ env.SERVICE_PATH }}
+        run: |
+          mkdir -p ../artifact
+          cp -r dist package.json package-lock.json host.json ../artifact/
+          # If you have functionApp.ts or other bootstrap files, copy them too:
+          if [ -f "functionApp.ts" ]; then
+            cp functionApp.ts ../artifact/
+          fi
+
+      - name: 📤 Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-loan-build
+          path: ./services/artifact
+          retention-days: 30
+
+  # ======================================================
+  # 🚀 DEPLOY DEV
+  # ======================================================
+  deploy-dev:
+    name: Deploy to DEV
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    environment:
+      name: dev
+      url: https://deviceloan-dev-ab07-func.azurewebsites.net
+
+    steps:
+      - name: 📥 Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: device-loan-build
+          path: ./artifact
+
+      - name: 🔐 Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 📦 Create deployment ZIP
+        run: |
+          cd artifact
+          zip -r ../deploy.zip .
+
+      - name: 🚀 Deploy to DEV Function App
+        run: |
+          az functionapp deployment source config-zip \
+            -g CampusDeviceLender-dev-Ab07-rg \
+            -n deviceloan-dev-ab07-func \
+            --src deploy.zip
+
+      - name: 🔍 DEV Health Check
+        run: |
+          echo "Waiting for DEV to warm up..."
+          sleep 30
+          curl -f https://deviceloan-dev-ab07-func.azurewebsites.net/api/health || echo "⚠️ DEV health check failed"
+
+  # ======================================================
+  # 🚀 DEPLOY TEST
+  # ======================================================
+  deploy-test:
+    name: Deploy to TEST
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'test')
+    environment:
+      name: test
+      url: https://deviceloan-test-ab07-func.azurewebsites.net
+
+    steps:
+      - name: 📥 Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: device-loan-build
+          path: ./artifact
+
+      - name: 🔐 Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 📦 Create deployment ZIP
+        run: |
+          cd artifact
+          zip -r ../deploy.zip .
+
+      - name: 🚀 Deploy to TEST Function App
+        run: |
+          az functionapp deployment source config-zip \
+            -g CampusDeviceLender-test-Ab07-rg \
+            -n deviceloan-test-ab07-func \
+            --src deploy.zip
+
+      - name: 🔍 TEST Health Check
+        run: |
+          echo "Waiting for TEST to warm up..."
+          sleep 30
+          curl -f https://deviceloan-test-ab07-func.azurewebsites.net/api/health || echo "⚠️ TEST health check failed"
+
+  # ======================================================
+  # 🚀 DEPLOY PROD (MANUAL ONLY)
+  # ======================================================
+  deploy-prod:
+    name: Deploy to PROD
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
+    environment:
+      name: production
+      url: https://deviceloan-prod-ab07-func.azurewebsites.net
+
+    steps:
+      - name: 📥 Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: device-loan-build
+          path: ./artifact
+
+      - name: 🔐 Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 📦 Create deployment ZIP
+        run: |
+          cd artifact
+          zip -r ../deploy.zip .
+
+      - name: 🚀 Deploy to PROD Function App
+        run: |
+          az functionapp deployment source config-zip \
+            -g CampusDeviceLender-prod-Ab07-rg \
+            -n deviceloan-prod-ab07-func \
+            --src deploy.zip
+
+      - name: 🔍 PROD Health Check
+        run: |
+          echo "Waiting for PROD to warm up..."
+          sleep 45
+          curl -f https://deviceloan-prod-ab07-func.azurewebsites.net/api/health || exit 1
+
+      - name: 📢 Deployment Summary
+        run: |
+          echo "🎉 Production deployment completed!"
+          echo "URL: https://deviceloan-prod-ab07-func.azurewebsites.net"
+          echo "Commit: ${{ github.sha }}"
+          echo "Actor: ${{ github.actor }}"
