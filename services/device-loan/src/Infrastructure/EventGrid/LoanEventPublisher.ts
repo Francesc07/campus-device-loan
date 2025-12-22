@@ -31,8 +31,8 @@ export class LoanEventPublisher implements ILoanEventPublisher {
    * This is the required method for dependency injection.
    */
   async publish(
-    eventType: "Loan.Created" | "Loan.Cancelled",
-    data: LoanRecord
+    eventType: "Loan.Created" | "Loan.Cancelled" | "Loan.Waitlisted" | "Loan.WaitlistProcessed",
+    data: any
   ): Promise<void> {
     if (this.mode === "azure") {
       return this.publishToEventGrid(eventType, data);
@@ -41,7 +41,7 @@ export class LoanEventPublisher implements ILoanEventPublisher {
   }
 
   /** --- INTERNAL: Publish to Azure Event Grid --- */
-  private async publishToEventGrid(eventType: string, data: LoanRecord): Promise<void> {
+  private async publishToEventGrid(eventType: string, data: any): Promise<void> {
     const events = [
       {
         id: crypto.randomUUID(),
@@ -72,7 +72,7 @@ export class LoanEventPublisher implements ILoanEventPublisher {
   }
 
   /** --- INTERNAL: Local development mode (no-op) --- */
-  private async publishLocal(eventType: string, data: LoanRecord): Promise<void> {
+  private async publishLocal(eventType: string, data: any): Promise<void> {
     console.log(`🔄 LOCAL MODE → Event skipped: ${eventType}`);
     console.log(JSON.stringify(data, null, 2));
   }

@@ -29,11 +29,14 @@ export async function createLoanHttp(
       };
     }
 
+    // Extract access token from Authorization header
+    const authHeader = req.headers.get("authorization") || "";
+    const accessToken = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : undefined;
+
     const result = await appServices.createLoanHandler.execute({
       userId,
       deviceId,
-      
-    });
+    }, accessToken);
 
     // Provide different messages based on loan status
     const isWaitlisted = result.status === "Waitlisted";

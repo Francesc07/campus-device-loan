@@ -4,6 +4,7 @@
  */
 export interface DeviceSnapshot {
   id: string;                    // Cosmos DB document id (same as device id)
+  deviceId?: string;             // Partition key field (same as id)
   brand: string;                 // Device brand (e.g., "Apple", "Dell")
   model: string;                 // Device model (e.g., "MacBook Pro 16")
   category: string;              // Device category (e.g., "Laptop", "Tablet")

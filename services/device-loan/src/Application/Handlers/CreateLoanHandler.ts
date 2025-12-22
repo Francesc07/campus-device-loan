@@ -4,7 +4,7 @@ import { CreateLoanDto } from "../Dtos/CreateLoanDto";
 export class CreateLoanHandler {
   constructor(private useCase: CreateLoanUseCase) {}
 
-  async execute(dto: CreateLoanDto) {
-    return this.useCase.execute(dto);
+  async execute(dto: CreateLoanDto, accessToken?: string) {
+    return this.useCase.execute(dto, accessToken);
   }
 }

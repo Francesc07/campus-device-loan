@@ -24,7 +24,7 @@ var storageAccountName = toLower('stdevloan${environment}${baseName}')
 var cosmosAccountName = toLower('cosmos-deviceloan-${environment}-${baseName}')
 var cosmosDatabaseName = 'DeviceLoanDB'
 var cosmosContainerName = 'Loans'
-var cosmosDeviceSnapshotsContainerName = 'DeviceSnapshots'
+var cosmosDeviceSnapshotsContainerName = 'device-snapshots'
 var eventGridTopicName = 'evgt-deviceloan-${environment}-${baseName}'
 var applicationInsightsName = 'appi-deviceloan-${environment}-${baseName}'
 var logAnalyticsName = 'log-deviceloan-${environment}-${baseName}'
@@ -155,7 +155,7 @@ resource cosmosDeviceSnapshotsContainer 'Microsoft.DocumentDB/databaseAccounts/s
       id: cosmosDeviceSnapshotsContainerName
       partitionKey: {
         paths: [
-          '/id'
+          '/deviceId'
         ]
         kind: 'Hash'
       }

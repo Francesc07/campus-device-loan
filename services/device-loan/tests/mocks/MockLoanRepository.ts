@@ -91,6 +91,17 @@ export class MockLoanRepository implements ILoanRepository {
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }
 
+  async listByStatus(status: string): Promise<LoanRecord[]> {
+    this.incrementCallCount('listByStatus');
+    
+    await this.simulateNetworkLatency();
+    
+    return Array.from(this.loans.values())
+      .map(loan => this.stripVersion(loan))
+      .filter(loan => loan.status === status)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+
   // Test utilities
   clear(): void {
     this.loans.clear();

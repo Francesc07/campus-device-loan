@@ -59,6 +59,16 @@ export class CosmosLoanRepository implements ILoanRepository {
     return resources[0] || null;
   }
 
+  async listByStatus(status: string): Promise<LoanRecord[]> {
+    const query = {
+      query: "SELECT * FROM c WHERE c.status = @status ORDER BY c.createdAt ASC",
+      parameters: [{ name: "@status", value: status }],
+    };
+
+    const { resources } = await this.container.items.query<LoanRecord>(query).fetchAll();
+    return resources;
+  }
+
   async getByDeviceAndStatus(deviceId: string, status: string): Promise<LoanRecord[]> {
     const query = {
       query: "SELECT * FROM c WHERE c.deviceId = @deviceId AND c.status = @status ORDER BY c.createdAt ASC",
