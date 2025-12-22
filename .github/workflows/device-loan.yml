@@ -114,29 +114,16 @@ jobs:
       - name: 📦 Package for deployment
         working-directory: ${{ env.SERVICE_PATH }}
         run: |
-          # Create deployment package with all necessary files
-          mkdir -p deployment-package
-          
-          # Copy compiled code
-          cp -r dist deployment-package/
-          
-          # Copy Azure Functions configuration files
-          cp host.json deployment-package/
-          cp package.json deployment-package/
-          cp package-lock.json deployment-package/
-          
-          # Copy node_modules (required for func CLI deployment)
-          cp -r node_modules deployment-package/
-          
-          # Install only production dependencies in the package
-          cd deployment-package
+          # Install only production dependencies
           npm ci --production
+          
+          echo "✅ Deployment package ready with dist/, node_modules/, package.json, and host.json"
 
       - name: 📤 Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: device-loan-build
-          path: ${{ env.SERVICE_PATH }}/deployment-package
+          path: ${{ env.SERVICE_PATH }}
           retention-days: 30
 
   # ======================================================
@@ -158,7 +145,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: device-loan-build
-          path: ./deployment-package
+          path: ./device-loan
 
       - name: 🔐 Azure Login
         uses: azure/login@v1
@@ -176,7 +163,7 @@ jobs:
           sudo apt-get install -y azure-functions-core-tools-4
 
       - name: 🚀 Deploy to DEV Function App
-        working-directory: ./deployment-package
+        working-directory: ./device-loan
         run: |
           func azure functionapp publish deviceloan-dev-ab07-func --typescript
 
@@ -205,7 +192,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: device-loan-build
-          path: ./deployment-package
+          path: ./device-loan
 
       - name: 🔐 Azure Login
         uses: azure/login@v1
@@ -223,7 +210,7 @@ jobs:
           sudo apt-get install -y azure-functions-core-tools-4
 
       - name: 🚀 Deploy to TEST Function App
-        working-directory: ./deployment-package
+        working-directory: ./device-loan
         run: |
           func azure functionapp publish deviceloan-test-ab07-func --typescript
 
@@ -250,7 +237,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: device-loan-build
-          path: ./deployment-package
+          path: ./device-loan
 
       - name: 🔐 Azure Login
         uses: azure/login@v1
@@ -268,7 +255,7 @@ jobs:
           sudo apt-get install -y azure-functions-core-tools-4
 
       - name: 🚀 Deploy to PROD Function App
-        working-directory: ./deployment-package
+        working-directory: ./device-loan
         run: |
           func azure functionapp publish deviceloan-prod-ab07-func --typescript
 
