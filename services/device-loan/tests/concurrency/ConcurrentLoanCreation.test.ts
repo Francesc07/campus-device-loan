@@ -3,6 +3,7 @@ import { CreateLoanUseCase } from "../../src/Application/UseCases/CreateLoanUseC
 import { MockLoanRepository } from "../mocks/MockLoanRepository";
 import { MockDeviceSnapshotRepository } from "../mocks/MockDeviceSnapshotRepository";
 import { MockLoanEventPublisher } from "../mocks/MockLoanEventPublisher";
+import { MockUserService } from "../mocks/MockUserService";
 import { CreateLoanDto } from "../../src/Application/Dtos/CreateLoanDto";
 import { LoanStatus } from "../../src/Domain/Enums/LoanStatus";
 import { singleAvailableDevice, createDeviceSnapshot } from "../fixtures/deviceFixtures";
@@ -12,12 +13,14 @@ describe('Concurrent Loan Creation', () => {
   let mockLoanRepo: MockLoanRepository;
   let mockSnapshotRepo: MockDeviceSnapshotRepository;
   let mockEventPublisher: MockLoanEventPublisher;
+  let mockUserService: MockUserService;
 
   beforeEach(() => {
     mockLoanRepo = new MockLoanRepository();
     mockSnapshotRepo = new MockDeviceSnapshotRepository();
     mockEventPublisher = new MockLoanEventPublisher();
-    useCase = new CreateLoanUseCase(mockLoanRepo, mockSnapshotRepo, mockEventPublisher);
+    mockUserService = new MockUserService();
+    useCase = new CreateLoanUseCase(mockLoanRepo, mockSnapshotRepo, mockEventPublisher, mockUserService);
   });
 
   afterEach(() => {

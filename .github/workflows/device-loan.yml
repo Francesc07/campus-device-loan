@@ -55,17 +55,14 @@ jobs:
         working-directory: ${{ env.SERVICE_PATH }}
         run: npm ci
 
-      - name: 🧪 Run unit tests
+      - name: 🧪 Run all tests
         working-directory: ${{ env.SERVICE_PATH }}
-        run: npm run test:unit -- --ci --maxWorkers=2
+        run: npm test -- --ci --maxWorkers=2
 
-      - name: 🧪 Run integration tests
+      - name: 📊 Generate coverage report
+        if: always()
         working-directory: ${{ env.SERVICE_PATH }}
-        run: npm run test:integration -- --ci --maxWorkers=2
-
-      - name: 🧪 Run concurrency tests
-        working-directory: ${{ env.SERVICE_PATH }}
-        run: npm run test:concurrency -- --ci --maxWorkers=2
+        run: npm test -- --coverage --ci --maxWorkers=2
 
       - name: 📦 Upload coverage
         if: always()

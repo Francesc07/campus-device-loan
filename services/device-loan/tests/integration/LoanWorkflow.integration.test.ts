@@ -7,6 +7,7 @@ import { ListLoansUseCase } from "../../src/Application/UseCases/ListLoansUseCas
 import { MockLoanRepository } from "../mocks/MockLoanRepository";
 import { MockDeviceSnapshotRepository } from "../mocks/MockDeviceSnapshotRepository";
 import { MockLoanEventPublisher } from "../mocks/MockLoanEventPublisher";
+import { MockUserService } from "../mocks/MockUserService";
 import { CreateLoanDto } from "../../src/Application/Dtos/CreateLoanDto";
 import { CancelLoanDto } from "../../src/Application/Dtos/CancelLoanDto";
 import { ReservationEventDTO } from "../../src/Application/Dtos/ReservationEventDTO";
@@ -18,6 +19,7 @@ describe('Loan Workflow Integration Tests', () => {
   let mockLoanRepo: MockLoanRepository;
   let mockSnapshotRepo: MockDeviceSnapshotRepository;
   let mockEventPublisher: MockLoanEventPublisher;
+  let mockUserService: MockUserService;
   
   let createLoanUseCase: CreateLoanUseCase;
   let cancelLoanUseCase: CancelLoanUseCase;
@@ -29,10 +31,11 @@ describe('Loan Workflow Integration Tests', () => {
     mockLoanRepo = new MockLoanRepository();
     mockSnapshotRepo = new MockDeviceSnapshotRepository();
     mockEventPublisher = new MockLoanEventPublisher();
+    mockUserService = new MockUserService();
 
-    createLoanUseCase = new CreateLoanUseCase(mockLoanRepo, mockSnapshotRepo, mockEventPublisher);
-    cancelLoanUseCase = new CancelLoanUseCase(mockLoanRepo);
-    activateLoanUseCase = new ActivateLoanUseCase(mockLoanRepo);
+    createLoanUseCase = new CreateLoanUseCase(mockLoanRepo, mockSnapshotRepo, mockEventPublisher, mockUserService);
+    cancelLoanUseCase = new CancelLoanUseCase(mockLoanRepo, mockEventPublisher);
+    activateLoanUseCase = new ActivateLoanUseCase(mockLoanRepo, mockEventPublisher);
     getLoanUseCase = new GetLoanByIdUseCase(mockLoanRepo);
     listLoansUseCase = new ListLoansUseCase(mockLoanRepo);
   });

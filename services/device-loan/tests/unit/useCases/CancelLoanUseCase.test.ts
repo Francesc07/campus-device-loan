@@ -1,6 +1,7 @@
 // tests/unit/useCases/CancelLoanUseCase.test.ts
 import { CancelLoanUseCase } from "../../../src/Application/UseCases/CancelLoanUseCase";
 import { MockLoanRepository } from "../../mocks/MockLoanRepository";
+import { MockLoanEventPublisher } from "../../mocks/MockLoanEventPublisher";
 import { CancelLoanDto } from "../../../src/Application/Dtos/CancelLoanDto";
 import { LoanStatus } from "../../../src/Domain/Enums/LoanStatus";
 import { createLoanRecord, pendingLoan, activeLoan } from "../../fixtures/loanFixtures";
@@ -8,10 +9,12 @@ import { createLoanRecord, pendingLoan, activeLoan } from "../../fixtures/loanFi
 describe('CancelLoanUseCase', () => {
   let useCase: CancelLoanUseCase;
   let mockLoanRepo: MockLoanRepository;
+  let mockEventPublisher: MockLoanEventPublisher;
 
   beforeEach(() => {
     mockLoanRepo = new MockLoanRepository();
-    useCase = new CancelLoanUseCase(mockLoanRepo);
+    mockEventPublisher = new MockLoanEventPublisher();
+    useCase = new CancelLoanUseCase(mockLoanRepo, mockEventPublisher);
   });
 
   afterEach(() => {
