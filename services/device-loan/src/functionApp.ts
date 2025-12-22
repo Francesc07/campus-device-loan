@@ -1,5 +1,6 @@
 // src/functionApp.ts
 import { app } from "@azure/functions";
+import "./API/functions/health-http";
 import "./API/functions/create-loan-http";
 import "./API/functions/cancel-loan-http";
 import "./API/functions/list-loans-http";
