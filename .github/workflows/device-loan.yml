@@ -55,6 +55,10 @@ jobs:
         working-directory: ${{ env.SERVICE_PATH }}
         run: npm ci
 
+      - name: 🏗️ Build application
+        working-directory: ${{ env.SERVICE_PATH }}
+        run: npm run build
+
       - name: 🧪 Run all tests
         working-directory: ${{ env.SERVICE_PATH }}
         run: npm test -- --ci --maxWorkers=2
