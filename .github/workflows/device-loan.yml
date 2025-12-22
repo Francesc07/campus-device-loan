@@ -145,12 +145,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: device-loan-build
-          path: ./device-loan
+          path: ./deployment-package
 
       - name: 🔐 Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: � Checkout code for func CLI
+        uses: actions/checkout@v4
 
       - name: 📦 Install Azure Functions Core Tools
         run: |
@@ -160,7 +163,7 @@ jobs:
           sudo apt-get install -y azure-functions-core-tools-4
 
       - name: 🚀 Deploy to DEV Function App
-        working-directory: ./device-loan
+        working-directory: ./deployment-package
         run: |
           func azure functionapp publish deviceloan-dev-ab07-func --typescript
 
@@ -176,9 +179,9 @@ jobs:
   deploy-test:
     name: Deploy to TEST
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, deploy-dev]
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'test')
     environment:
       name: test
@@ -189,12 +192,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: device-loan-build
-          path: ./device-loan
+          path: ./deployment-package
 
       - name: 🔐 Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: � Checkout code for func CLI
+        uses: actions/checkout@v4
 
       - name: 📦 Install Azure Functions Core Tools
         run: |
@@ -204,7 +210,7 @@ jobs:
           sudo apt-get install -y azure-functions-core-tools-4
 
       - name: 🚀 Deploy to TEST Function App
-        working-directory: ./device-loan
+        working-directory: ./deployment-package
         run: |
           func azure functionapp publish deviceloan-test-ab07-func --typescript
 
@@ -220,8 +226,10 @@ jobs:
   deploy-prod:
     name: Deploy to PROD (Requires Approval)
     runs-on: ubuntu-latest
-    needs: [build, deploy-test]
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
+    needs: build
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
     environment:
       name: production
       url: https://deviceloan-prod-ab07-func.azurewebsites.net
@@ -231,12 +239,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: device-loan-build
-          path: ./device-loan
+          path: ./deployment-package
 
       - name: 🔐 Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: � Checkout code for func CLI
+        uses: actions/checkout@v4
 
       - name: 📦 Install Azure Functions Core Tools
         run: |
@@ -246,7 +257,7 @@ jobs:
           sudo apt-get install -y azure-functions-core-tools-4
 
       - name: 🚀 Deploy to PROD Function App
-        working-directory: ./device-loan
+        working-directory: ./deployment-package
         run: |
           func azure functionapp publish deviceloan-prod-ab07-func --typescript
 
