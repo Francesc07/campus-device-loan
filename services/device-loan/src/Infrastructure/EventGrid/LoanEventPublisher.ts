@@ -5,7 +5,7 @@ import crypto from "crypto";
 /**
  * Azure Event Grid publisher for loan events.
  * 
- * Publishes loan lifecycle events (Created, Cancelled, Activated, etc.) to Event Grid
+ * Publishes loan lifecycle events (Created, Cancelled, Activated, etc.) to Event Grid.
  * for consumption by downstream services (Reservation, Catalog, Confirmation).
  * 
  * Supports both Azure Event Grid and local console logging modes.
