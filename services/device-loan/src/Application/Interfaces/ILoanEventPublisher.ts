@@ -6,8 +6,9 @@ export interface ILoanEventPublisher {
    * Loan Service emits:
    *  - "Loan.Created"
    *  - "Loan.Cancelled"
+   *  - "Loan.Activated"
    *  - "Loan.Waitlisted"
    *  - "Loan.WaitlistProcessed"
    */
-  publish(eventType: "Loan.Created" | "Loan.Cancelled" | "Loan.Waitlisted" | "Loan.WaitlistProcessed", data: any): Promise<void>;
+  publish(eventType: "Loan.Created" | "Loan.Cancelled" | "Loan.Activated" | "Loan.Waitlisted" | "Loan.WaitlistProcessed", data: any): Promise<void>;
 }

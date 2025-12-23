@@ -310,11 +310,11 @@ func azure functionapp publish func-deviceloan-test-Ab07
 services/device-loan/
 ├── src/
 │   ├── API/
-│   │   └── functions/          # HTTP endpoints
+│   │   └── functions/          # HTTP endpoints & Event Grid triggers
 │   │       ├── create-loan-http.ts
 │   │       ├── cancel-loan-http.ts
 │   │       ├── list-loans-http.ts
-│   │       └── device-sync-http.ts
+│   │       └── device-sync-event-grid.ts
 │   ├── Application/
 │   │   └── useCases/           # Business logic
 │   │       ├── CreateLoanHandler.ts

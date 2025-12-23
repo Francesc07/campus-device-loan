@@ -34,9 +34,9 @@ npm run clean
 npm run build
 
 echo "===================================="
-echo "🌱 Deploying to DEV: $DEV_FUNC"
+# echo "🌱 Deploying to DEV: $DEV_FUNC"
 echo "===================================="
-func azure functionapp publish $DEV_FUNC --typescript
+# func azure functionapp publish $DEV_FUNC --typescript
 
 echo "===================================="
 echo "🧪 Deploying to TEST: $TEST_FUNC"

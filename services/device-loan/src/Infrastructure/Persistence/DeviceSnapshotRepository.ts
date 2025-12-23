@@ -10,7 +10,7 @@ export class DeviceSnapshotRepository implements IDeviceSnapshotRepository {
   constructor() {
     const databaseId = process.env.COSMOS_DB_DATABASE_NAME || "DeviceLoanDB";
     const containerId =
-      process.env.DEVICE_SNAPSHOTS_CONTAINER_NAME || "DeviceSnapshots";
+      process.env.COSMOS_DEVICESNAPSHOTS_CONTAINER_ID || "device-snapshots";
 
     this.container = CosmosClientFactory.getClient()
       .database(databaseId)
@@ -48,10 +48,24 @@ export class DeviceSnapshotRepository implements IDeviceSnapshotRepository {
   /** Get a device snapshot by id */
   async getSnapshot(deviceId: string): Promise<DeviceSnapshot | null> {
     try {
+      // Try point read first (efficient when deviceId field exists)
       const { resource } =
         await this.container.item(deviceId, deviceId).read<DeviceSnapshot>();
       return resource ?? null;
-    } catch {
+    } catch (error: any) {
+      // Fallback to query if point read fails (for documents without deviceId field)
+      if (error.code === 404) {
+        try {
+          const query = {
+            query: "SELECT * FROM c WHERE c.id = @id",
+            parameters: [{ name: "@id", value: deviceId }]
+          };
+          const { resources } = await this.container.items.query<DeviceSnapshot>(query).fetchAll();
+          return resources.length > 0 ? resources[0] : null;
+        } catch {
+          return null;
+        }
+      }
       return null;
     }
   }

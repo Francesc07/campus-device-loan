@@ -6,16 +6,19 @@
 import { CosmosLoanRepository } from "./Infrastructure/Persistence/CosmosLoanRepository";
 import { DeviceSnapshotRepository } from "./Infrastructure/Persistence/DeviceSnapshotRepository";
 import { LoanEventPublisher } from "./Infrastructure/EventGrid/LoanEventPublisher";
+import { Auth0UserService } from "./Infrastructure/Users/Auth0UserService";
 
 // UseCases
 import {CreateLoanUseCase} from "./Application/UseCases/CreateLoanUseCase";
 import { CancelLoanUseCase } from "./Application/UseCases/CancelLoanUseCase";
 import { ActivateLoanUseCase } from "./Application/UseCases/ActivateLoanUseCase";
+import { LinkReservationUseCase } from "./Application/UseCases/LinkReservationUseCase";
 import { ListLoansUseCase } from "./Application/UseCases/ListLoansUseCase";
 import { GetDeviceSnapshotUseCase } from "./Application/UseCases/GetDeviceSnapshotUseCase";
 import { ListDeviceSnapshotsUseCase } from "./Application/UseCases/ListDeviceSnapshotsUseCase";
 import { GetLoanByIdUseCase } from "./Application/UseCases/GetLoanByIdUseCase";
 import { ProcessWaitlistUseCase } from "./Application/UseCases/ProcessWaitlistUseCase";
+import { SyncAllDevicesUseCase } from "./Application/UseCases/SyncAllDevicesUseCase";
 
 
 
@@ -41,7 +44,10 @@ const loanRepo = new CosmosLoanRepository();
 const snapshotRepo = new DeviceSnapshotRepository();
 const eventPublisher = new LoanEventPublisher();  
 
-
+// Auth0 config from environment
+const auth0Domain = process.env.AUTH0_DOMAIN || "";
+const auth0Token = process.env.AUTH0_MGMT_API_TOKEN || "";
+const userService = new Auth0UserService(auth0Domain, auth0Token);
 
 // -----------------------------------------------------------
 //  USE CASES
@@ -50,11 +56,13 @@ const eventPublisher = new LoanEventPublisher();
 const createLoanUseCase = new CreateLoanUseCase(
   loanRepo,
   snapshotRepo,
-  eventPublisher
+  eventPublisher,
+  userService // inject user service
 );
 
-const cancelLoanUseCase = new CancelLoanUseCase(loanRepo);
-const activateLoanUseCase = new ActivateLoanUseCase(loanRepo);
+const cancelLoanUseCase = new CancelLoanUseCase(loanRepo, eventPublisher);
+const activateLoanUseCase = new ActivateLoanUseCase(loanRepo, eventPublisher);
+const linkReservationUseCase = new LinkReservationUseCase(loanRepo);
 const listLoansUseCase = new ListLoansUseCase(loanRepo);
 
 const getDeviceSnapshotUseCase = new GetDeviceSnapshotUseCase(snapshotRepo);
@@ -66,6 +74,9 @@ const processWaitlistUseCase = new ProcessWaitlistUseCase(
   snapshotRepo,
   eventPublisher
 );
+
+const catalogServiceUrl = process.env.CATALOG_SERVICE_URL || "https://devicecatalog-dev-ab07-func.azurewebsites.net";
+const syncAllDevicesUseCase = new SyncAllDevicesUseCase(snapshotRepo, catalogServiceUrl);
 
 // -----------------------------------------------------------
 //  HANDLERS
@@ -106,6 +117,7 @@ export const appServices = {
   cancelLoanHandler,
   listLoansHandler,
   activateLoanHandler,
+  linkReservationUseCase,
 
   getDeviceSnapshotHandler,
   listDeviceSnapshotsHandler,
@@ -116,7 +128,13 @@ export const appServices = {
   reservationEventsProcessor,
   staffEventsProcessor,
 
+  // Device sync use case
+  syncAllDevicesUseCase,
+
   // Repositories if needed
   loanRepo,
   snapshotRepo,
+
+  // Auth0 User Service
+  userService,
 };

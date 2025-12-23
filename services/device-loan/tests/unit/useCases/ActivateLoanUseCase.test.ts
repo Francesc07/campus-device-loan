@@ -1,6 +1,7 @@
 // tests/unit/useCases/ActivateLoanUseCase.test.ts
 import { ActivateLoanUseCase } from "../../../src/Application/UseCases/ActivateLoanUseCase";
 import { MockLoanRepository } from "../../mocks/MockLoanRepository";
+import { MockLoanEventPublisher } from "../../mocks/MockLoanEventPublisher";
 import { ReservationEventDTO } from "../../../src/Application/Dtos/ReservationEventDTO";
 import { LoanStatus } from "../../../src/Domain/Enums/LoanStatus";
 import { createLoanRecord } from "../../fixtures/loanFixtures";
@@ -8,10 +9,12 @@ import { createLoanRecord } from "../../fixtures/loanFixtures";
 describe('ActivateLoanUseCase', () => {
   let useCase: ActivateLoanUseCase;
   let mockLoanRepo: MockLoanRepository;
+  let mockEventPublisher: MockLoanEventPublisher;
 
   beforeEach(() => {
     mockLoanRepo = new MockLoanRepository();
-    useCase = new ActivateLoanUseCase(mockLoanRepo);
+    mockEventPublisher = new MockLoanEventPublisher();
+    useCase = new ActivateLoanUseCase(mockLoanRepo, mockEventPublisher);
   });
 
   afterEach(() => {

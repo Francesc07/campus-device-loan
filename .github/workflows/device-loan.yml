@@ -22,7 +22,7 @@ on:
           - prod
 
 env:
-  NODE_VERSION: '20.x'
+  NODE_VERSION: '22.x'
   SERVICE_PATH: './services/device-loan'
 
 jobs:
@@ -55,17 +55,18 @@ jobs:
         working-directory: ${{ env.SERVICE_PATH }}
         run: npm ci
 
-      - name: 🧪 Run unit tests
+      - name: 🏗️ Build application
         working-directory: ${{ env.SERVICE_PATH }}
-        run: npm run test:unit -- --ci --maxWorkers=2
+        run: npm run build
 
-      - name: 🧪 Run integration tests
+      - name: 🧪 Run all tests
         working-directory: ${{ env.SERVICE_PATH }}
-        run: npm run test:integration -- --ci --maxWorkers=2
+        run: npm test -- --ci --maxWorkers=2
 
-      - name: 🧪 Run concurrency tests
+      - name: 📊 Generate coverage report
+        if: always()
         working-directory: ${{ env.SERVICE_PATH }}
-        run: npm run test:concurrency -- --ci --maxWorkers=2
+        run: npm test -- --coverage --ci --maxWorkers=2
 
       - name: 📦 Upload coverage
         if: always()
@@ -113,18 +114,16 @@ jobs:
       - name: 📦 Package for deployment
         working-directory: ${{ env.SERVICE_PATH }}
         run: |
-          mkdir -p ../artifact
-          cp -r dist package.json package-lock.json host.json ../artifact/
-          # If you have functionApp.ts or other bootstrap files, copy them too:
-          if [ -f "functionApp.ts" ]; then
-            cp functionApp.ts ../artifact/
-          fi
+          # Install only production dependencies
+          npm ci --production
+          
+          echo "✅ Deployment package ready with dist/, node_modules/, package.json, and host.json"
 
       - name: 📤 Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: device-loan-build
-          path: ./services/artifact
+          path: ${{ env.SERVICE_PATH }}
           retention-days: 30
 
   # ======================================================
@@ -146,24 +145,24 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: device-loan-build
-          path: ./artifact
+          path: ./device-loan
 
       - name: 🔐 Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 📦 Create deployment ZIP
+      - name: 📦 Install Azure Functions Core Tools
         run: |
-          cd artifact
-          zip -r ../deploy.zip .
+          wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y azure-functions-core-tools-4
 
       - name: 🚀 Deploy to DEV Function App
+        working-directory: ./device-loan
         run: |
-          az functionapp deployment source config-zip \
-            -g CampusDeviceLender-dev-Ab07-rg \
-            -n deviceloan-dev-ab07-func \
-            --src deploy.zip
+          func azure functionapp publish deviceloan-dev-ab07-func --typescript
 
       - name: 🔍 DEV Health Check
         run: |
@@ -179,7 +178,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'test')
     environment:
       name: test
@@ -190,25 +189,24 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: device-loan-build
-          path: ./artifact
+          path: ./device-loan
 
       - name: 🔐 Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 📦 Create deployment ZIP
+      - name: 📦 Install Azure Functions Core Tools
         run: |
-          cd artifact
-          zip -r ../deploy.zip .
+          wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y azure-functions-core-tools-4
 
       - name: 🚀 Deploy to TEST Function App
+        working-directory: ./device-loan
         run: |
-          az functionapp deployment source config-zip \
-            -g CampusDeviceLender-test-new-Ab07-rg \
-            -n devicereservation-test-new-func \
-            
-            --src deploy.zip
+          func azure functionapp publish deviceloan-test-ab07-func --typescript
 
       - name: 🔍 TEST Health Check
         run: |
@@ -217,12 +215,12 @@ jobs:
           curl -f https://deviceloan-test-ab07-func.azurewebsites.net/api/health || echo "⚠️ TEST health check failed"
 
   # ======================================================
-  # 🚀 DEPLOY PROD (MANUAL ONLY)
+  # 🚀 DEPLOY PROD (MANUAL ONLY - REQUIRES APPROVAL)
   # ======================================================
   deploy-prod:
-    name: Deploy to PROD
+    name: Deploy to PROD (Requires Approval)
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, deploy-test]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
     environment:
       name: production
@@ -233,24 +231,24 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: device-loan-build
-          path: ./artifact
+          path: ./device-loan
 
       - name: 🔐 Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 📦 Create deployment ZIP
+      - name: 📦 Install Azure Functions Core Tools
         run: |
-          cd artifact
-          zip -r ../deploy.zip .
+          wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y azure-functions-core-tools-4
 
       - name: 🚀 Deploy to PROD Function App
+        working-directory: ./device-loan
         run: |
-          az functionapp deployment source config-zip \
-            -g CampusDeviceLender-prod-Ab07-rg \
-            -n deviceloan-prod-ab07-func \
-            --src deploy.zip
+          func azure functionapp publish deviceloan-prod-ab07-func --typescript
 
       - name: 🔍 PROD Health Check
         run: |

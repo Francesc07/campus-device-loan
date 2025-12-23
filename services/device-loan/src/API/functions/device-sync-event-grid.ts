@@ -22,6 +22,7 @@ export async function deviceSyncEventGrid(event: any, ctx: InvocationContext): P
       case "Device.Updated":
         await repo.saveSnapshot({
           id: data.id,
+          deviceId: data.id,
           brand: data.brand,
           model: data.model,
           category: data.category,

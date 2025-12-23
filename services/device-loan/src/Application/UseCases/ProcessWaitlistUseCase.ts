@@ -48,14 +48,19 @@ export class ProcessWaitlistUseCase {
       // Update status from Waitlisted to Pending
       loan.status = LoanStatus.Pending;
       loan.updatedAt = new Date().toISOString();
+      
+      // Ensure metadata is populated (in case old loans don't have it)
+      if (!loan.deviceBrand) loan.deviceBrand = device.brand;
+      if (!loan.deviceModel) loan.deviceModel = device.model;
 
       await this.loanRepo.update(loan);
 
       // Notify that the device is now available for this user
+      // Send complete loan record with all metadata for confirmation service
       await this.eventPublisher.publish("Loan.WaitlistProcessed", {
-        loanId: loan.id,
-        userId: loan.userId,
-        deviceId: loan.deviceId,
+        ...loan,
+        deviceBrand: device.brand,
+        deviceModel: device.model,
         message: `Device ${device.brand} ${device.model} is now available for your loan request`,
         previousStatus: LoanStatus.Waitlisted,
         newStatus: LoanStatus.Pending

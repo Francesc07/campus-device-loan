@@ -12,12 +12,24 @@ export async function listDeviceSnapshotsHttp(
     return authResult as HttpResponseInit; // Return 401 or 403 error response
   }
   
-  const result = await appServices.listDeviceSnapshotsHandler.handle();
+  try {
+    const result = await appServices.listDeviceSnapshotsHandler.handle();
 
-  return {
-    status: 200,
-    jsonBody: { success: true, count: result.length, data: result }
-  };
+    return {
+      status: 200,
+      jsonBody: { success: true, count: result.length, data: result }
+    };
+  } catch (error: any) {
+    ctx.error("Error listing device snapshots:", error);
+    return {
+      status: 500,
+      jsonBody: { 
+        success: false, 
+        error: "Failed to list devices",
+        message: error.message 
+      }
+    };
+  }
 }
 
 app.http("list-device-snapshots-http", {

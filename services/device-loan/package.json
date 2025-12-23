@@ -28,9 +28,11 @@
     "@azure/cosmos": "^4.6.0",
     "@azure/eventgrid": "^5.12.0",
     "@azure/functions": "^4.8.0",
+    "@types/node-fetch": "^2.6.13",
     "@types/uuid": "^10.0.0",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.0",
+    "node-fetch": "^2.7.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

@@ -1,1 +1,0 @@
-{"version":3,"file":"GetDeviceSnapshotHandler.js","sourceRoot":"","sources":["GetDeviceSnapshotHandler.ts"],"names":[],"mappings":";;;AAIA,MAAa,wBAAwB;IACnC,YAA6B,OAAiC;QAAjC,YAAO,GAAP,OAAO,CAA0B;IAAG,CAAC;IAElE,KAAK,CAAC,OAAO,CAAC,QAAgB;QAC5B,OAAO,IAAI,CAAC,OAAO,CAAC,OAAO,CAAC,QAAQ,CAAC,CAAC;IACxC,CAAC;CACF;AAND,4DAMC"}
