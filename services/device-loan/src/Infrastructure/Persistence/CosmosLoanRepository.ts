@@ -4,6 +4,12 @@ import { ILoanRepository } from "../../Application/Interfaces/ILoanRepository";
 import { LoanRecord } from "../../Domain/Entities/LoanRecord";
 import { CosmosClientFactory } from "../Config/CosmosClientFactory";
 
+/**
+ * Cosmos DB implementation of the loan repository.
+ * 
+ * Manages CRUD operations for loan records in Azure Cosmos DB.
+ * Uses /userId as partition key for efficient query performance.
+ */
 export class CosmosLoanRepository implements ILoanRepository {
   private container: Container;
 
@@ -14,15 +20,28 @@ export class CosmosLoanRepository implements ILoanRepository {
     this.container = CosmosClientFactory.getContainer(dbName, containerName);
   }
 
+  /**
+   * Creates a new loan record in the database.
+   * @param loan - The loan record to create
+   */
   async create(loan: LoanRecord): Promise<void> {
     await this.container.items.create(loan);
   }
 
+  /**
+   * Updates an existing loan record.
+   * @param loan - The loan record with updated values
+   */
   async update(loan: LoanRecord): Promise<void> {
     // Partition key is /id, so use loan.id for both id + partitionKey
     await this.container.item(loan.id, loan.id).replace(loan);
   }
 
+  /**
+   * Retrieves a loan by its ID.
+   * @param loanId - The unique loan identifier
+   * @returns The loan record or null if not found
+   */
   async getById(loanId: string): Promise<LoanRecord | null> {
     const query = {
       query: "SELECT * FROM c WHERE c.id = @id",

@@ -7,14 +7,28 @@ import { LoanStatus } from "../../Domain/Enums/LoanStatus";
 import { v4 as uuidv4 } from "uuid";
 import { IUserService } from "../Interfaces/IUserService";
 
+/**
+ * Use case for creating a new device loan.
+ * 
+ * Handles loan creation with device availability checks, waitlist support,
+ * and event publishing to notify downstream services.
+ */
 export class CreateLoanUseCase {
   constructor(
     private loanRepo: ILoanRepository,
     private snapshotRepo: IDeviceSnapshotRepository,
     private eventPublisher: ILoanEventPublisher,
-    private userService: IUserService // <-- add user service
+    private userService: IUserService
   ) {}
 
+  /**
+   * Creates a new loan for the specified user and device.
+   * 
+   * @param dto - Loan creation data (userId, deviceId, optional reservationId)
+   * @param accessToken - Optional Auth0 access token for fetching user email
+   * @returns Created loan record with status (Pending if available, Waitlisted if not)
+   * @throws Error if device is not found or loan creation fails
+   */
   async execute(dto: CreateLoanDto, accessToken?: string): Promise<LoanRecord> {
     const device = await this.snapshotRepo.getSnapshot(dto.deviceId);
 
@@ -43,9 +57,9 @@ export class CreateLoanUseCase {
       userId: dto.userId,
       reservationId: dto.reservationId,
       deviceId: dto.deviceId,
-      deviceBrand: device.brand, // <-- add device brand
-      deviceModel: device.model, // <-- add device model
-      userEmail, // <-- add user email
+      deviceBrand: device.brand,
+      deviceModel: device.model,
+      userEmail,
       startDate: now.toISOString(),
       dueDate: due.toISOString(),
       status: status,

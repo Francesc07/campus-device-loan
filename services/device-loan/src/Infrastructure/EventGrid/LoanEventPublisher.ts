@@ -2,8 +2,14 @@ import { ILoanEventPublisher } from "../../Application/Interfaces/ILoanEventPubl
 import { LoanRecord } from "../../Domain/Entities/LoanRecord";
 import crypto from "crypto";
 
-// Use global fetch available in Node.js v18+
-
+/**
+ * Azure Event Grid publisher for loan events.
+ * 
+ * Publishes loan lifecycle events (Created, Cancelled, Activated, etc.) to Event Grid
+ * for consumption by downstream services (Reservation, Catalog, Confirmation).
+ * 
+ * Supports both Azure Event Grid and local console logging modes.
+ */
 export class LoanEventPublisher implements ILoanEventPublisher {
   private mode: "azure" | "local";
   private topicEndpoint: string;
@@ -27,8 +33,10 @@ export class LoanEventPublisher implements ILoanEventPublisher {
   }
 
   /**
-   * PUBLIC: Implements ILoanEventPublisher.publish.
-   * This is the required method for dependency injection.
+   * Publishes a loan event to Event Grid or logs locally.
+   * 
+   * @param eventType - Type of loan event (Loan.Created, Loan.Cancelled, etc.)
+   * @param data - Event payload (typically a LoanRecord object)
    */
   async publish(
     eventType: "Loan.Created" | "Loan.Cancelled" | "Loan.Waitlisted" | "Loan.WaitlistProcessed",

@@ -1,308 +1,672 @@
 # Device Loan Service
 
-Campus device loan microservice built with Azure Functions, Cosmos DB, and Event Grid.
+Enterprise-grade campus device loan microservice built with Azure Functions, Cosmos DB, and Event Grid. This service manages the complete lifecycle of device loans for students, from reservation through return.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [API Reference](#api-reference)
+- [Event Integration](#event-integration)
+- [Authentication & Authorization](#authentication--authorization)
+- [Deployment](#deployment)
+- [Testing](#testing)
+- [Monitoring](#monitoring)
+- [Troubleshooting](#troubleshooting)
 
 ## Overview
 
-This service manages device loans for students, allowing them to:
-- Create loan reservations (2-day period)
-- Cancel loans before pickup
-- View loan history
+### Features
+
+- ✅ **Device Loan Management**: Create, cancel, and track device loans
+- ✅ **Event-Driven Architecture**: Real-time integration with Catalog, Reservation, and Confirmation services
+- ✅ **Device Snapshot Sync**: Automatic synchronization of device information from catalog
+- ✅ **Loan Status Tracking**: Complete lifecycle management (Pending → Active → Returned/Cancelled)
+- ✅ **Overdue Loan Detection**: Automated timer-based overdue loan checks
+- ✅ **Waitlist Support**: Automatic waitlist processing when devices become available
+- ✅ **Secure Authentication**: Auth0-based JWT token validation
+- ✅ **Comprehensive Testing**: Unit, integration, and concurrency tests with >40% coverage
+
+### Tech Stack
+
+- **Runtime**: Azure Functions v4 (Node.js 22.x)
+- **Language**: TypeScript 5.x
+- **Database**: Azure Cosmos DB (Serverless, NoSQL API)
+- **Events**: Azure Event Grid
+- **Authentication**: Auth0 (JWT tokens with RS256)
+- **Monitoring**: Azure Application Insights
+- **CI/CD**: GitHub Actions
 
 ## Architecture
 
-**Tech Stack:**
-- Azure Functions v4 (Node.js 18, TypeScript)
-- Cosmos DB Serverless (2 containers: Loans, DeviceSnapshots)
-- Event Grid (event-driven communication)
-- Application Insights (monitoring)
+### System Design
 
-**Event-Driven Design:**
-- **Publishes**: `Loan.Created`, `Loan.Cancelled`
-- **Subscribes**: `Device.Snapshot`, `Device.Deleted` (from Catalog Service)
-- **Subscribers**: Reservation Service, Catalog Service
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Device Loan Service                          │
+├─────────────────────────────────────────────────────────────────┤
+│  HTTP Triggers                                                   │
+│  ├─ POST   /api/loan/create         (Create new loan)          │
+│  ├─ DELETE /api/loan/cancel         (Cancel loan)              │
+│  ├─ GET    /api/loan/list           (List user loans)          │
+│  ├─ GET    /api/loan/id/{id}        (Get loan details)         │
+│  ├─ GET    /api/devices/list        (List device snapshots)    │
+│  ├─ GET    /api/devices/id/{id}     (Get device snapshot)      │
+│  ├─ POST   /api/admin/sync-devices  (Manual device sync)       │
+│  └─ GET    /api/health              (Health check)             │
+│                                                                  │
+│  Event Grid Triggers                                             │
+│  ├─ device-sync-event-grid          (Device updates)           │
+│  ├─ reservation-events-http         (Reservation updates)      │
+│  └─ confirmation-events-http        (Confirmation updates)     │
+│                                                                  │
+│  Timer Triggers                                                  │
+│  ├─ sync-devices-timer              (Hourly device sync)       │
+│  └─ check-overdue-loans-timer       (Daily overdue check)      │
+└─────────────────────────────────────────────────────────────────┘
+         │                    │                    │
+         ▼                    ▼                    ▼
+  ┌─────────────┐   ┌──────────────────┐   ┌─────────────┐
+  │  Cosmos DB  │   │   Event Grid     │   │   Auth0     │
+  │   (NoSQL)   │   │  (Pub/Sub Bus)   │   │   (JWT)     │
+  └─────────────┘   └──────────────────┘   └─────────────┘
+```
 
-## Environments
+### Cosmos DB Schema
 
-| Environment | Function App | Purpose |
-|-------------|--------------|---------|
-| **DEV** | `http://localhost:7071` | Local development with Azure DEV resources |
-| **TEST** | `https://func-deviceloan-test-ab07.azurewebsites.net` | Integration testing |
-| **PROD** | `https://func-deviceloan-prod-ab07.azurewebsites.net` | Production |
+**Container: Loans** (Partition Key: `/userId`)
+```typescript
+{
+  id: string;              // Loan UUID
+  loanId: string;          // Same as id (legacy compatibility)
+  userId: string;          // Auth0 user ID (partition key)
+  deviceId: string;        // Device UUID
+  reservationId?: string;  // Optional reservation reference
+  status: LoanStatus;      // Pending | Active | Cancelled | Returned | Waitlisted | Overdue
+  deviceBrand: string;     // Device brand (e.g., "Apple", "Dell")
+  deviceModel: string;     // Device model (e.g., "MacBook Pro 16")
+  userEmail: string;       // User email from Auth0
+  startDate: Date;         // Loan start date
+  dueDate: Date;           // Loan due date
+  createdAt: Date;         // Creation timestamp
+  updatedAt: Date;         // Last update timestamp
+  cancelledAt?: Date;      // Cancellation timestamp
+  returnedAt?: Date;       // Return timestamp
+  notes?: string;          // Additional notes
+}
+```
+
+**Container: device-snapshots** (Partition Key: `/deviceId`)
+```typescript
+{
+  id: string;              // Device UUID
+  deviceId: string;        // Same as id (partition key)
+  brand: string;           // Device brand
+  model: string;           // Device model
+  availableCount: number;  // Available devices
+  maxDeviceCount: number;  // Total devices
+  lastSyncedAt: Date;      // Last sync timestamp
+}
+```
+
+### Event Flow
+
+**Published Events:**
+- `Loan.Created` - New loan request created
+- `Loan.Activated` - Loan activated after confirmation
+- `Loan.Cancelled` - Loan cancelled by user
+- `Loan.Returned` - Loan returned by user
+- `Loan.Overdue` - Loan marked as overdue
+
+**Subscribed Events:**
+- `Device.Snapshot` - Full device catalog sync from Catalog Service
+- `Device.Created` - New device added to catalog
+- `Device.Updated` - Device availability changed
+- `Device.Deleted` - Device removed from catalog
+- `Reservation.Confirmed` - Reservation confirmed by Reservation Service
+- `CONFIRMATION_COLLECTED` - Device collected (from Confirmation Service)
+
+## Prerequisites
+
+### Development Tools
+- **Node.js** 22.x or later
+- **npm** 10.x or later
+- **Azure CLI** 2.50.0 or later
+- **Azure Functions Core Tools** v4
+
+### Azure Resources
+- Azure Subscription
+- Resource Group per environment (dev, test, prod)
+- Cosmos DB Account (Serverless)
+- Event Grid Topic
+- Application Insights
+
+### Auth0 Configuration
+- Auth0 Tenant
+- Auth0 API configured with permissions
+- Auth0 Application (SPA) configured
 
 ## Quick Start
 
-### Prerequisites
-- Node.js 18+
-- Azure CLI
-- Azure Functions Core Tools v4
+### Local Development Setup
 
-### Local Development (DEV)
-
+1. **Clone and navigate to project:**
 ```bash
-# 1. Switch to DEV environment
-./Deployment/switch-env.sh dev
+cd /workspaces/campus-device-loan/services/device-loan
+```
 
-# 2. Install dependencies
+2. **Install dependencies:**
+```bash
 npm install
+```
 
-# 3. Build TypeScript
+3. **Configure environment:**
+```bash
+cp local.settings.template.json local.settings.json
+```
+
+4. **Update `local.settings.json` with your values:**
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "COSMOS_ENDPOINT": "https://your-cosmos.documents.azure.com:443/",
+    "COSMOS_KEY": "your-cosmos-key",
+    "COSMOS_DATABASE_ID": "DeviceLoanDB",
+    "COSMOS_LOANS_CONTAINER_ID": "Loans",
+    "COSMOS_DEVICESNAPSHOTS_CONTAINER_ID": "device-snapshots",
+    "EVENT_GRID_TOPIC_ENDPOINT": "https://your-topic.region.eventgrid.azure.net/api/events",
+    "EVENT_GRID_TOPIC_KEY": "your-event-grid-key",
+    "AUTH0_DOMAIN": "your-tenant.auth0.com",
+    "AUTH0_AUDIENCE": "https://deviceloan.yourcompany.com/api",
+    "ENVIRONMENT": "dev"
+  }
+}
+```
+
+5. **Build and run:**
+```bash
 npm run build
-
-# 4. Start locally
 npm start
 ```
 
 Function App runs on: `http://localhost:7071`
 
+### Deploy to Azure
+
+**Using automated script:**
+```bash
+./deploy-all.sh
+```
+
+**Using GitHub Actions:**
+- Push to `develop` branch → Auto-deploy to DEV + TEST
+- Push to `main` branch → Auto-deploy to PROD (with approval)
+
 ## API Reference
 
-Base path: `http://localhost:7071/api` for local development or `https://<function-app-name>.azurewebsites.net/api` in Azure.
+Base URL:
+- Local: `http://localhost:7071/api`
+- DEV: `https://deviceloan-dev-ab07-func.azurewebsites.net/api`
+- TEST: `https://deviceloan-test-ab07-func.azurewebsites.net/api`
+- PROD: `https://deviceloan-prod-ab07-func.azurewebsites.net/api`
 
-### POST /loans
+### Create Loan
 
-Borrow or reserve a device for a student and start the two-day pickup timer.
+Create a new device loan request.
 
-**Request**
+**Endpoint:** `POST /api/loan/create`
 
+**Headers:**
+```
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body:**
 ```json
 {
-  "userId": "student123",
-  "modelId": "laptop-model-456"
+  "userId": "auth0|123456789",
+  "deviceId": "device-uuid-123",
+  "reservationId": "reservation-uuid-456"  // Optional
 }
 ```
 
-**Sample response**
-
+**Response (200 OK):**
 ```json
 {
   "success": true,
   "data": {
-    "id": "uuid",
-    "loanId": "uuid",
-    "userId": "student123",
-    "modelId": "laptop-model-456",
-    "status": "pending",
-    "createdAt": "2025-11-12T10:00:00Z",
-    "dueAt": "2025-11-14T10:00:00Z"
+    "id": "loan-uuid-789",
+    "userId": "auth0|123456789",
+    "deviceId": "device-uuid-123",
+    "reservationId": "reservation-uuid-456",
+    "deviceBrand": "Apple",
+    "deviceModel": "MacBook Pro 16",
+    "userEmail": "student@university.edu",
+    "status": "Pending",
+    "startDate": "2025-12-23T10:00:00Z",
+    "dueDate": "2025-12-25T10:00:00Z",
+    "createdAt": "2025-12-23T10:00:00Z",
+    "updatedAt": "2025-12-23T10:00:00Z"
   }
 }
 ```
 
-**Emits** `Loan.Created`
-- Reservation Service: reserves the device.
-- Catalog Service: adjusts availability.
+**Events Published:**
+- `Loan.Created` - Notifies Reservation and Catalog services
 
-### DELETE /loans/{loanId}
+---
 
-Cancel a reservation before pickup.
+### Cancel Loan
 
-**Sample response**
+Cancel an existing loan (only if status is Pending).
 
+**Endpoint:** `DELETE /api/loan/cancel`
+
+**Headers:**
+```
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "loanId": "loan-uuid-789"
+}
+```
+
+**Response (200 OK):**
 ```json
 {
   "success": true,
   "message": "Loan cancelled successfully",
   "data": {
-    "id": "uuid",
-    "loanId": "uuid",
-    "userId": "student123",
-    "modelId": "laptop-model-456",
-    "status": "cancelled",
-    "createdAt": "2025-11-12T10:00:00Z",
-    "cancelledAt": "2025-11-12T11:00:00Z",
-    "dueAt": "2025-11-14T10:00:00Z"
+    "id": "loan-uuid-789",
+    "status": "Cancelled",
+    "cancelledAt": "2025-12-23T11:00:00Z"
   }
 }
 ```
 
-**Emits** `Loan.Cancelled`
-- Reservation Service: releases the reservation.
-- Catalog Service: restores availability.
+**Events Published:**
+- `Loan.Cancelled` - Notifies Reservation and Catalog services
 
-### GET /loans?userId={userId}
+---
 
-Return the current and past loans for a user. Supports filtering by `userId`.
+### List Loans
 
-**Sample response**
+List all loans for the authenticated user.
 
+**Endpoint:** `GET /api/loan/list?userId={userId}&status={status}&limit={limit}`
+
+**Query Parameters:**
+- `userId` (required) - User ID to filter loans
+- `status` (optional) - Filter by status (Pending, Active, Cancelled, etc.)
+- `limit` (optional) - Maximum number of results (default: 50)
+
+**Response (200 OK):**
 ```json
 {
   "success": true,
-  "count": 2,
   "data": [
     {
-      "id": "uuid",
-      "loanId": "uuid",
-      "userId": "student123",
-      "modelId": "laptop-model-456",
-      "status": "active",
-      "createdAt": "2025-11-10T10:00:00Z",
-      "dueAt": "2025-11-12T10:00:00Z"
-    },
-    {
-      "id": "uuid-2",
-      "loanId": "uuid-2",
-      "userId": "student123",
-      "modelId": "device-789",
-      "status": "cancelled",
-      "createdAt": "2025-11-08T10:00:00Z",
-      "cancelledAt": "2025-11-08T11:00:00Z",
-      "dueAt": "2025-11-10T10:00:00Z"
+      "id": "loan-uuid-789",
+      "userId": "auth0|123456789",
+      "deviceBrand": "Apple",
+      "deviceModel": "MacBook Pro 16",
+      "status": "Active",
+      "startDate": "2025-12-23T10:00:00Z",
+      "dueDate": "2025-12-25T10:00:00Z"
     }
-  ]
+  ],
+  "count": 1
 }
 ```
 
-## Event Grid Integration
+---
 
-### Device Catalog Sync (Event Grid Trigger)
+### Health Check
 
-**Function**: `deviceSyncEventGrid`  
-**Trigger Type**: Event Grid  
-**Subscribes To**: Catalog Service Event Grid Topic
+Check service health and status.
 
-This function maintains a local snapshot of the device catalog for resilience. When the Catalog Service is unavailable, loans can still validate device availability from local snapshots.
+**Endpoint:** `GET /api/health`
 
-**Subscribed Events**:
-- `Device.Created` - Adds new device to local snapshot
-- `Device.Updated` - Updates device availability/details
-- `Device.Deleted` - Removes device from snapshot
-
-**Event Schema**:
+**Response (200 OK):**
 ```json
 {
-  "id": "event-uuid",
-  "eventType": "Device.Updated",
-  "subject": "devices/device-123",
-  "eventTime": "2025-11-15T10:30:00Z",
+  "status": "healthy",
+  "timestamp": "2025-12-23T12:00:00.000Z",
+  "service": "device-loan",
+  "version": "1.0.0",
+  "environment": "dev",
+  "uptime": 3600.5,
+  "correlationId": "abc-123-def-456"
+}
+```
+
+## Event Integration
+
+### Setting Up Event Grid Subscription
+
+The service requires an Event Grid subscription from the Catalog Service to receive device updates.
+
+**Using Azure Portal:**
+
+1. Navigate to Catalog Service's Event Grid Topic
+2. Click **+ Event Subscription**
+3. Configure:
+   - Name: `deviceloan-device-sync`
+   - Event Schema: `Event Grid Schema`
+   - Filter to Event Types: `Device.Created`, `Device.Updated`, `Device.Deleted`, `Device.Snapshot`
+   - Endpoint Type: `Azure Function`
+   - Function: `device-sync-event-grid`
+
+**Using provided script:**
+```bash
+./create-reservation-subscription.sh
+```
+
+### Event Metadata
+
+All published events include complete loan metadata:
+
+```json
+{
+  "eventType": "Loan.Created",
+  "subject": "/loans/loan-uuid-789",
+  "eventTime": "2025-12-23T10:00:00Z",
   "data": {
-    "id": "device-123",
-    "brand": "Dell",
-    "model": "Latitude 5420",
-    "category": "Laptop",
-    "description": "14-inch business laptop",
-    "availableCount": 8,
-    "maxDeviceCount": 15,
-    "imageUrl": "https://...",
-    "fileUrl": "https://..."
+    "id": "loan-uuid-789",
+    "userId": "auth0|123456789",
+    "deviceId": "device-uuid-123",
+    "deviceBrand": "Apple",
+    "deviceModel": "MacBook Pro 16",
+    "userEmail": "student@university.edu",
+    "status": "Pending",
+    "startDate": "2025-12-23T10:00:00Z",
+    "dueDate": "2025-12-25T10:00:00Z"
   }
 }
 ```
 
-**Configuration Required**:  
-Create an Event Grid subscription in Azure Portal pointing the Catalog Service topic to this function's Event Grid trigger endpoint.
+This rich metadata allows subscribers (like Confirmation Service) to display information without additional API calls.
 
-### Error responses
+## Authentication & Authorization
 
-- 400 – invalid payload (for example, missing `userId` or `modelId`).
-- 404 – loan not found for the supplied identifier.
-- 500 – unexpected server error.
+### Auth0 Configuration
 
-### Loan statuses
+**1. Create Auth0 API:**
+- Navigate to Auth0 Dashboard → Applications → APIs
+- Create API with identifier: `https://deviceloan.yourcompany.com/api`
+- Signing Algorithm: RS256
 
-| Status    | Description                            |
-|-----------|----------------------------------------|
-| pending   | Loan created and waiting for pickup.    |
-| active    | Device collected by the student.       |
-| cancelled | Reservation cancelled before pickup.   |
-| returned  | Device returned.                       |
-| overdue   | Pickup window expired without return.  |
+**2. Define Permissions:**
+```
+view:my-loans     - View your own loans
+create:loan       - Create a new loan
+cancel:loan       - Cancel your own loan
+read:devices      - View device catalog
+```
+
+**3. Configure Environment Variables:**
+
+```bash
+# Local Development
+AUTH0_DOMAIN=your-tenant.auth0.com
+AUTH0_AUDIENCE=https://deviceloan.yourcompany.com/api
+
+# Azure (using Azure CLI)
+az functionapp config appsettings set \
+  --name deviceloan-dev-ab07-func \
+  --resource-group deviceloan-dev-ab07-rg \
+  --settings AUTH0_DOMAIN="your-tenant.auth0.com" \
+             AUTH0_AUDIENCE="https://deviceloan.yourcompany.com/api"
+```
+
+**4. Frontend Integration:**
+
+Your frontend must request access tokens (not ID tokens) with the correct audience:
+
+```typescript
+// React example with @auth0/auth0-react
+<Auth0Provider
+  domain="your-tenant.auth0.com"
+  clientId="YOUR_CLIENT_ID"
+  authorizationParams={{
+    redirect_uri: window.location.origin,
+    audience: "https://deviceloan.yourcompany.com/api",
+    scope: "view:my-loans create:loan cancel:loan read:devices"
+  }}
+>
+```
 
 ## Deployment
 
-### Naming & Resources
+### Environments
 
-- Resource group: `rg-loan-device-Ab07`
-- Region: `uksouth`
+| Environment | Branch | Deployment | Approval Required |
+|-------------|--------|-----------|-------------------|
+| DEV | `develop` | Automatic | No |
+| TEST | `develop` | Automatic (after DEV) | No |
+| PROD | `main` | Automatic | Yes (Reviewer) |
 
-| Resource | Dev | Test | Prod |
-|----------|-----|------|------|
-| Function App | func-loan-device-Ab07-dev | func-loan-device-Ab07-test | func-loan-device-Ab07-prod |
-| Cosmos DB | cosmos-loan-device-ab07-dev | cosmos-loan-device-ab07-test | cosmos-loan-device-ab07-prod |
-| Storage | stloandeviceab07dev | stloandeviceab07test | stloandeviceab07prod |
-| App Insights | appi-loan-device-Ab07-dev | appi-loan-device-Ab07-test | appi-loan-device-Ab07-prod |
+### CI/CD Pipeline
 
-### Azure resources by environment
+**GitHub Actions Workflow:**
 
-#### Development (dev)
+```yaml
+develop branch push:
+  → Build & Test
+  → Deploy to DEV
+  → Deploy to TEST (after DEV succeeds)
 
-```
-Resource Group: deviceloan-dev-Ab07-rg
-├── Function App: func-deviceloan-dev-Ab07
-├── Cosmos DB: cosmos-deviceloan-dev-Ab07
-│   ├── Database: DeviceLoanDB
-│   ├── Container: Loans
-│   └── Container: DeviceSnapshots
-├── Storage: stdevloandevAb07
-├── Event Grid Topic: evgt-deviceloan-dev-Ab07
-├── App Insights: appi-deviceloan-dev-Ab07
-└── Log Analytics: log-deviceloan-dev-Ab07
+main branch push:
+  → Build & Test
+  → Deploy to PROD (waits for reviewer approval)
 ```
 
-#### Test (test)
-
-```
-Resource Group: deviceloan-test-Ab07-rg
-├── Function App: func-deviceloan-test-Ab07
-├── Cosmos DB: cosmos-deviceloan-test-Ab07
-│   ├── Database: DeviceLoanDB
-│   ├── Container: Loans
-│   └── Container: DeviceSnapshots
-├── Storage: stdevloantestAb07
-├── Event Grid Topic: evgt-deviceloan-test-Ab07
-├── App Insights: appi-deviceloan-test-Ab07
-└── Log Analytics: log-deviceloan-test-Ab07
-```
-
-#### Production (prod)
-
-```
-Resource Group: deviceloan-prod-Ab07-rg
-├── Function App: func-deviceloan-prod-Ab07
-├── Cosmos DB: cosmos-deviceloan-prod-Ab07
-│   ├── Database: DeviceLoanDB
-│   ├── Container: Loans
-│   └── Container: DeviceSnapshots
-├── Storage: stdevloanprodAb07
-├── Event Grid Topic: evgt-deviceloan-prod-Ab07
-├── App Insights: appi-deviceloan-prod-Ab07
-└── Log Analytics: log-deviceloan-prod-Ab07
-```
-
-### Deploy Infrastructure
+### Manual Deployment
 
 ```bash
-# Deploy all 3 environments (dev, test, prod)
-./Deployment/deploy-all.sh
+# Build
+npm run build
 
-# Deploy single environment
-./Deployment/deploy.sh dev
+# Deploy using Azure Functions Core Tools
+func azure functionapp publish deviceloan-dev-ab07-func --typescript
 ```
 
-### Populate Credentials
+### Infrastructure as Code
+
+Infrastructure is defined in `/Deployment/main.bicep`:
 
 ```bash
-# Populate all environment credentials
-./Deployment/populate-all-envs.sh
+# Deploy infrastructure
+az deployment group create \
+  --resource-group deviceloan-dev-ab07-rg \
+  --template-file Deployment/main.bicep \
+  --parameters environment=dev
 ```
 
-### Validate Configuration
+## Testing
+
+### Run All Tests
 
 ```bash
-# Check all config files are valid
-./Deployment/validate-configs.sh
+npm test
 ```
 
-### Deploy Function Code
+### Test Coverage
 
 ```bash
-# Switch to target environment
-./Deployment/switch-env.sh test
-
-# Deploy to Azure
-func azure functionapp publish func-deviceloan-test-Ab07
+npm run test:coverage
 ```
+
+Current coverage: **44.59%** statement coverage
+
+### Test Structure
+
+```
+tests/
+├── unit/                    # Unit tests for individual components
+│   ├── domain/             # Domain entity tests
+│   ├── repositories/       # Repository tests
+│   └── useCases/           # Use case tests
+├── integration/            # Integration tests
+│   └── LoanWorkflow.integration.test.ts
+├── concurrency/            # Concurrency and race condition tests
+│   ├── ConcurrentLoanCreation.test.ts
+│   ├── DatabaseConcurrency.test.ts
+│   └── IdempotencyTests.test.ts
+├── mocks/                  # Mock implementations
+│   ├── MockDeviceSnapshotRepository.ts
+│   ├── MockLoanRepository.ts
+│   ├── MockLoanEventPublisher.ts
+│   └── MockUserService.ts
+└── fixtures/               # Test data fixtures
+```
+
+### Example Test
+
+```typescript
+describe('CreateLoanUseCase', () => {
+  it('should create loan successfully when device is available', async () => {
+    const useCase = new CreateLoanUseCase(
+      mockLoanRepo,
+      mockDeviceRepo,
+      mockEventPublisher,
+      mockUserService
+    );
+
+    const result = await useCase.execute({
+      userId: 'user-123',
+      deviceId: 'device-456'
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data.status).toBe(LoanStatus.Pending);
+  });
+});
+```
+
+## Monitoring
+
+### Application Insights
+
+All functions are instrumented with Application Insights for:
+- Request telemetry
+- Dependency tracking
+- Exception logging
+- Custom events
+
+### Key Metrics
+
+- **Loan Creation Rate**: Number of loans created per hour
+- **Cancellation Rate**: Percentage of loans cancelled
+- **Overdue Loans**: Number of loans past due date
+- **Event Processing**: Event Grid trigger success rate
+- **API Response Time**: Average response time per endpoint
+
+### Logs
+
+**View logs locally:**
+```bash
+func start
+```
+
+**View logs in Azure:**
+```bash
+az monitor app-insights query \
+  --app deviceloan-dev-ab07-insights \
+  --analytics-query "traces | where timestamp > ago(1h) | project timestamp, message"
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**1. 401 Unauthorized Errors**
+
+**Symptoms:** API returns 401 even with valid token
+
+**Causes:**
+- Missing `AUTH0_DOMAIN` or `AUTH0_AUDIENCE` environment variables
+- Frontend requesting ID token instead of access token
+- Token missing required scopes
+
+**Solution:**
+- Verify environment variables are set
+- Ensure frontend requests access token with correct audience
+- Check token has required permissions in Auth0 API
+
+---
+
+**2. Device Snapshots Not Syncing**
+
+**Symptoms:** Device data is stale or missing
+
+**Causes:**
+- Missing Event Grid subscription
+- Event Grid subscription misconfigured
+- Catalog Service not publishing events
+
+**Solution:**
+```bash
+# Check subscription exists
+az eventgrid event-subscription list \
+  --source-resource-id $(az eventgrid topic show \
+    --name evgt-devicecatalog-dev-Ab07 \
+    --resource-group devicecatalog-dev-Ab07-rg \
+    --query id -o tsv)
+
+# Create subscription if missing
+./create-event-grid-subscription.sh
+```
+
+---
+
+**3. Loans Not Activating**
+
+**Symptoms:** Loans stuck in "Pending" status after confirmation
+
+**Causes:**
+- `CONFIRMATION_COLLECTED` event not received
+- Missing `reservationId` in loan record
+- Event handler error
+
+**Solution:**
+- Verify `reservationId` is set when loan is created
+- Check Application Insights for event processing errors
+- Ensure `confirmation-events-http` function is deployed
+
+---
+
+**4. Cosmos DB Connection Errors**
+
+**Symptoms:** 500 errors with Cosmos DB connection timeouts
+
+**Causes:**
+- Invalid Cosmos DB credentials
+- Network/firewall issues
+- Resource not found
+
+**Solution:**
+```bash
+# Test connection
+az cosmosdb check-name-exists --name your-cosmos-account
+
+# Regenerate keys if needed
+az cosmosdb keys list \
+  --name your-cosmos-account \
+  --resource-group deviceloan-dev-ab07-rg
+```
+
+---
 
 ## Project Structure
 
@@ -310,207 +674,60 @@ func azure functionapp publish func-deviceloan-test-Ab07
 services/device-loan/
 ├── src/
 │   ├── API/
-│   │   └── functions/          # HTTP endpoints & Event Grid triggers
-│   │       ├── create-loan-http.ts
-│   │       ├── cancel-loan-http.ts
-│   │       ├── list-loans-http.ts
-│   │       └── device-sync-event-grid.ts
+│   │   └── functions/          # Azure Function definitions
 │   ├── Application/
-│   │   └── useCases/           # Business logic
-│   │       ├── CreateLoanHandler.ts
-│   │       └── CancelLoanHandler.ts
+│   │   ├── Dtos/              # Data Transfer Objects
+│   │   ├── Handlers/          # Request handlers
+│   │   ├── Interfaces/        # Service interfaces
+│   │   └── UseCases/          # Business logic use cases
 │   ├── Domain/
-│   │   └── Entities/           # Domain models
-│   │       ├── Loan.ts
-│   │       └── DeviceSnapshot.ts
-│   └── Infrastructure/
-│       ├── CosmosLoanRepository.ts
-│       ├── DeviceSnapshotRepository.ts
-│       └── EventGrid/
-│           └── LoanEventPublisher.ts
-├── Deployment/                 # Infrastructure & scripts
-│   ├── main.bicep             # Infrastructure template
-│   ├── deploy-all.sh          # Deploy all environments
-│   ├── deploy.sh              # Deploy single environment
-│   ├── populate-all-envs.sh   # Fetch credentials
-│   ├── switch-env.sh          # Switch environments
-│   └── validate-configs.sh    # Validate config files
-├── functionApp.ts             # Function registration
-├── host.json                  # Function host config
-├── package.json               # Dependencies
-└── tsconfig.json              # TypeScript config
+│   │   ├── Entities/          # Domain entities
+│   │   └── Enums/             # Domain enums
+│   ├── Infrastructure/
+│   │   ├── Auth/              # Auth0 integration
+│   │   ├── Config/            # Configuration factories
+│   │   ├── EventGrid/         # Event Grid publishers/subscribers
+│   │   ├── Logging/           # Logging utilities
+│   │   ├── Models/            # Data models
+│   │   ├── Observability/     # Monitoring
+│   │   ├── Persistence/       # Cosmos DB repositories
+│   │   └── Users/             # User service
+│   ├── appServices.ts         # Dependency injection
+│   └── functionApp.ts         # Function app registration
+├── tests/                     # Test suites
+├── Deployment/
+│   └── main.bicep            # Infrastructure as Code
+├── .github/
+│   └── workflows/
+│       └── device-loan.yml   # CI/CD pipeline
+├── package.json
+├── tsconfig.json
+├── jest.config.js
+└── README.md
 ```
 
-## Database Schema
+---
 
-### Loans Container
-```typescript
-{
-  id: string;              // Partition key: /id
-  loanId: string;
-  userId: string;
-  modelId: string;
-  createdAt: string;       // ISO timestamp
-  dueAt: string;           // 2 days from creation
-  status: "pending" | "active" | "cancelled" | "returned" | "overdue";
-  cancelledAt?: string;
-  returnedAt?: string;
-  notes?: string;
-}
-```
+## Contributing
 
-### DeviceSnapshots Container
-```typescript
-{
-  id: string;              // Partition key: /id
-  brand: string;
-  model: string;
-  category: string;
-  description?: string;
-  availableCount: number;
-  maxDeviceCount: number;
-  imageUrl?: string;
-  fileUrl?: string;
-  lastUpdated: string;     // ISO timestamp
-}
-```
+### Code Style
 
-## Event Schemas
+- Use TypeScript strict mode
+- Follow ESLint configuration
+- Add JSDoc comments for public APIs
+- Write tests for new features
 
-### Loan.Created
-```json
-{
-  "eventType": "Loan.Created",
-  "subject": "LoanService/loans/{loanId}",
-  "data": {
-    "loanId": "uuid",
-    "userId": "student123",
-    "modelId": "laptop-id",
-    "status": "pending",
-    "createdAt": "2025-11-13T07:00:00Z",
-    "dueAt": "2025-11-15T07:00:00Z"
-  }
-}
-```
+### Pull Request Process
 
-### Loan.Cancelled
-```json
-{
-  "eventType": "Loan.Cancelled",
-  "subject": "LoanService/loans/{loanId}",
-  "data": {
-    "loanId": "uuid",
-    "userId": "student123",
-    "modelId": "laptop-id",
-    "status": "cancelled",
-    "cancelledAt": "2025-11-13T08:00:00Z"
-  }
-}
-```
+1. Create feature branch from `develop`
+2. Implement changes with tests
+3. Ensure all tests pass: `npm test`
+4. Create PR to `develop` branch
+5. After review and merge, changes auto-deploy to DEV/TEST
+6. Create PR from `develop` to `main` for production release
 
-## Configuration Files
-
-- **local.settings.dev.json** - DEV (local) configuration
-- **local.settings.test.json** - TEST environment configuration
-- **local.settings.prod.json** - PROD environment configuration
-- **.env.dev** - DEV environment variables
-- **.env.test** - TEST environment variables
-- **.env.prod** - PROD environment variables
-- **AUTH0_SETUP.md** - Complete Auth0 configuration guide
-
-> ⚠️ **Important**: Auth0 authentication requires `AUTH0_DOMAIN` and `AUTH0_AUDIENCE` to be configured. See [AUTH0_SETUP.md](./AUTH0_SETUP.md) for detailed setup instructions.
-
-### local.settings.*.json at a glance
-
-| Setting                           | Dev                     | Test                    | Prod                    | Notes                              |
-|-----------------------------------|-------------------------|-------------------------|-------------------------|------------------------------------|
-| FUNCTIONS_WORKER_RUNTIME          | Configured              | Configured              | Configured              | Always `node`.
-| AzureWebJobsStorage               | Populate after deployment | Populate after deployment | Populate after deployment | Storage connection string.
-| COSMOS_DB_ENDPOINT                | Populate after deployment | Populate after deployment | Populate after deployment | Cosmos DB endpoint URL.
-| COSMOS_DB_KEY                     | Populate after deployment | Populate after deployment | Populate after deployment | Cosmos DB access key.
-| COSMOS_DB_DATABASE                | DeviceLoanDB            | DeviceLoanDB            | DeviceLoanDB            | Shared database name.
-| COSMOS_DB_CONTAINER               | Loans                   | Loans                   | Loans                   | Loans container.
-| COSMOS_DEVICESNAPSHOTS_CONTAINER_ID | DeviceSnapshots         | DeviceSnapshots         | DeviceSnapshots         | Device snapshots container.
-| EVENTGRID_TOPIC_ENDPOINT          | Populate after deployment | Populate after deployment | Populate after deployment | Event Grid topic endpoint.
-| EVENTGRID_TOPIC_KEY               | Populate after deployment | Populate after deployment | Populate after deployment | Event Grid access key.
-| ENVIRONMENT                       | dev                     | test                    | prod                    | Environment identifier.
-
-### .env.* templates at a glance
-
-| Setting                           | Dev value                       | Test value                      | Prod value                      | Notes                                   |
-|-----------------------------------|---------------------------------|---------------------------------|---------------------------------|-----------------------------------------|
-| ENVIRONMENT                       | dev                             | test                            | prod                            | Environment name.
-| FUNCTIONS_WORKER_RUNTIME          | Configured                      | Configured                      | Configured                      | Always `node`.
-| AZURE_STORAGE_CONNECTION_STRING   | Populate after deployment       | Populate after deployment       | Populate after deployment       | Storage account connection string.
-| COSMOS_DB_ENDPOINT                | Populate after deployment       | Populate after deployment       | Populate after deployment       | Cosmos DB endpoint URL.
-| COSMOS_DB_KEY                     | Populate after deployment       | Populate after deployment       | Populate after deployment       | Cosmos DB key.
-| COSMOS_DB_DATABASE                | DeviceLoanDB                    | DeviceLoanDB                    | DeviceLoanDB                    | Shared database name.
-| COSMOS_DB_CONTAINER               | Loans                           | Loans                           | Loans                           | Loans container.
-| COSMOS_DEVICESNAPSHOTS_CONTAINER_ID | DeviceSnapshots                 | DeviceSnapshots                 | DeviceSnapshots                 | Device snapshots container.
-| APPLICATIONINSIGHTS_CONNECTION_STRING | Populate after deployment    | Populate after deployment       | Populate after deployment       | App Insights connection string.
-| EVENTGRID_TOPIC_ENDPOINT          | Populate after deployment       | Populate after deployment       | Populate after deployment       | Event Grid topic endpoint.
-| EVENTGRID_TOPIC_KEY               | Populate after deployment       | Populate after deployment       | Populate after deployment       | Event Grid key.
-| FUNCTION_APP_NAME                 | func-deviceloan-dev-Ab07        | func-deviceloan-test-Ab07       | func-deviceloan-prod-Ab07       | Azure Function App name.
-| COSMOS_ACCOUNT_NAME               | cosmos-deviceloan-dev-Ab07      | cosmos-deviceloan-test-Ab07     | cosmos-deviceloan-prod-Ab07     | Cosmos DB account name.
-| STORAGE_ACCOUNT_NAME              | stdevloandevAb07                | stdevloantestAb07               | stdevloanprodAb07               | Storage account name.
-| RESOURCE_GROUP                    | deviceloan-dev-Ab07-rg          | deviceloan-test-Ab07-rg         | deviceloan-prod-Ab07-rg         | Resource group name.
-
-Configured = value stored in the repository.
-
-Populate after deployment = value injected by `./Deployment/populate-all-envs.sh` once Azure resources are provisioned.
-
-Run `./Deployment/switch-env.sh <env>` to copy the chosen environment into `.env` and `local.settings.json`.
-
-## Scripts
-
-All deployment and environment management scripts are in the `Deployment/` folder:
-
-| Script | Purpose |
-|--------|---------|
-| `deploy-all.sh` | Deploy infrastructure to all 3 environments |
-| `deploy.sh <env>` | Deploy infrastructure to specific environment |
-| `populate-all-envs.sh` | Fetch and populate credentials from Azure |
-| `switch-env.sh <env>` | Switch between dev/test/prod environments |
-| `validate-configs.sh` | Validate all configuration files |
-| `get-connection-strings.sh` | Get connection strings for an environment |
-
-## Azure Resources
-
-### DEV Environment
-- Resource Group: `deviceloan-dev-Ab07-rg`
-- Cosmos DB: `cosmos-deviceloan-dev-ab07`
-- Event Grid Topic: `evgt-deviceloan-dev-Ab07`
-- Storage: `stdevloandevab07`
-- App Insights: `appi-deviceloan-dev-Ab07`
-
-### TEST Environment
-- Resource Group: `deviceloan-test-Ab07-rg`
-- Function App: `func-deviceloan-test-Ab07`
-- Cosmos DB: `cosmos-deviceloan-test-ab07`
-- Event Grid Topic: `evgt-deviceloan-test-Ab07`
-- Storage: `stdevloantestab07`
-- App Insights: `appi-deviceloan-test-Ab07`
-
-### PROD Environment
-- Resource Group: `deviceloan-prod-Ab07-rg`
-- Function App: `func-deviceloan-prod-Ab07`
-- Cosmos DB: `cosmos-deviceloan-prod-ab07`
-- Event Grid Topic: `evgt-deviceloan-prod-Ab07`
-- Storage: `stdevloanprodab07`
-- App Insights: `appi-deviceloan-prod-Ab07`
-
-## Development Workflow
-
-1. **Local Development** - Run on localhost with DEV Azure resources
-2. **Deploy to TEST** - Test integration in TEST environment
-3. **Deploy to PROD** - Production deployment after testing
-
-## Documentation
-
-- **API-DOCS.md** - Complete API endpoint documentation
-- **CONFIG-SUMMARY.md** - Configuration summary for all environments
-- **Deployment/README.md** - Infrastructure deployment guide
+---
 
 ## License
 
-Internal campus project - All rights reserved
+Copyright © 2025 Campus Device Loan System
