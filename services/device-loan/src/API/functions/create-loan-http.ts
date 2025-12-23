@@ -4,8 +4,19 @@ import { CreateLoanDto } from "../../Application/Dtos/CreateLoanDto";
 import { requireAuth } from "../../Infrastructure/Auth/auth0Validation";
 
 /**
- * POST /api/loan/create
- * Student initiates a loan (before reservation confirms it)
+ * Azure Function HTTP trigger for creating a new device loan.
+ * 
+ * Endpoint: POST /api/loan/create
+ * 
+ * Creates a loan request for a student. If the device is available, the loan
+ * is created with Pending status. If unavailable, it's added to the waitlist.
+ * 
+ * Requires authentication and 'loan:devices' permission.
+ * Publishes Loan.Created or Loan.Waitlisted event to Event Grid.
+ * 
+ * @param req - HTTP request with userId, deviceId in body
+ * @param ctx - Azure Functions invocation context
+ * @returns 201 Created (available) or 202 Accepted (waitlisted)
  */
 export async function createLoanHttp(
   req: HttpRequest,

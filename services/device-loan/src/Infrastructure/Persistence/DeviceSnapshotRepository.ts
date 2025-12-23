@@ -4,6 +4,12 @@ import { DeviceSnapshot } from "../Models/DeviceSnapshot";
 import { CosmosClientFactory } from "../Config/CosmosClientFactory";
 import { IDeviceSnapshotRepository } from "../../Application/Interfaces/IDeviceSnapshotRepository";
 
+/**
+ * Cosmos DB repository for device snapshot data.
+ * 
+ * Manages cached device information synchronized from the Catalog Service.
+ * Uses /deviceId as partition key for efficient queries.
+ */
 export class DeviceSnapshotRepository implements IDeviceSnapshotRepository {
   private container: Container;
 
@@ -17,21 +23,31 @@ export class DeviceSnapshotRepository implements IDeviceSnapshotRepository {
       .container(containerId);
   }
 
-  /** Save or update a snapshot */
+  /**
+   * Saves or updates a device snapshot.
+   * Uses upsert to handle both create and update operations.
+   * @param snapshot - The device snapshot to save
+   */
   async saveSnapshot(snapshot: DeviceSnapshot): Promise<void> {
     await this.container.items.upsert(snapshot);
   }
 
-  /** Delete a snapshot */
+  /**
+   * Deletes a device snapshot.
+   * @param deviceId - The device ID to delete
+   */
   async deleteSnapshot(deviceId: string): Promise<void> {
     try {
       await this.container.item(deviceId, deviceId).delete();
     } catch {
-      // ignore if it doesn't exist
+      // Ignore if device doesn't exist
     }
   }
 
-  /** List all devices */
+  /**
+   * Lists all device snapshots sorted by brand and model.
+   * @returns Array of all device snapshots
+   */
   async listDevices(): Promise<DeviceSnapshot[]> {
   const query = { query: "SELECT * FROM c" };
 
