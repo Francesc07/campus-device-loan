@@ -30,6 +30,9 @@ describe('CancelLoanUseCase', () => {
       });
       await mockLoanRepo.create(loan);
 
+      // Small delay to ensure different timestamp
+      await new Promise(resolve => setTimeout(resolve, 5));
+
       const dto: CancelLoanDto = {
         loanId: loan.id,
         userId: loan.userId
