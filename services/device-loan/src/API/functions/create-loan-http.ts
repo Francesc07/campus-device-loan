@@ -29,16 +29,25 @@ export async function createLoanHttp(
   }
 
   try {
+    ctx.log(`📝 CREATE LOAN: Starting loan creation request`);
     const body = (await req.json()) as CreateLoanDto;
 
     const { userId, deviceId } = body;
 
     if (!userId || !deviceId ) {
+      ctx.warn(`⚠️ CREATE LOAN: Missing required fields - userId: ${!!userId}, deviceId: ${!!deviceId}`);
       return {
         status: 400,
-        jsonBody: { error: "userId and deviceId are required" }
+        jsonBody: { 
+          success: false,
+          error: "Missing required information",
+          message: "Both user ID and device ID are required to create a loan request.",
+          userFriendlyMessage: "Please provide all required information to request a device."
+        }
       };
     }
+
+    ctx.log(`🔄 CREATE LOAN: Processing request for user ${userId}, device ${deviceId}`);
 
     // Extract access token from Authorization header
     const authHeader = req.headers.get("authorization") || "";
@@ -56,6 +65,8 @@ export async function createLoanHttp(
       ? "Device is currently unavailable. Your request has been added to the waitlist."
       : "Loan request created successfully";
 
+    ctx.log(`✅ CREATE LOAN: ${isWaitlisted ? 'Waitlisted' : 'Created'} loan ${result.id} for user ${userId}`);
+
     return {
       status: statusCode,
       jsonBody: {
@@ -67,10 +78,45 @@ export async function createLoanHttp(
     };
     
   } catch (err: any) {
-    ctx.error("Error creating loan:", err);
+    ctx.error(`❌ CREATE LOAN: Failed to create loan - ${err.message}`, {
+      error: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString()
+    });
+
+    // Provide user-friendly error messages based on error type
+    let userMessage = "We're experiencing technical difficulties. Please try again in a few moments.";
+    let statusCode = 500;
+
+    if (err.message.includes("Device not found")) {
+      userMessage = "The requested device could not be found. Please verify the device is available in the catalog.";
+      statusCode = 404;
+      ctx.warn(`⚠️ CREATE LOAN: Device not found in catalog`);
+    } else if (err.message.includes("Unauthorized")) {
+      userMessage = "You don't have permission to perform this action.";
+      statusCode = 403;
+      ctx.warn(`⚠️ CREATE LOAN: Authorization failed`);
+    } else if (err.message.includes("timeout") || err.message.includes("ECONNREFUSED")) {
+      userMessage = "The service is temporarily unavailable. Our team has been notified. Please try again shortly.";
+      statusCode = 503;
+      ctx.error(`🔥 CREATE LOAN: Service unavailable - possible connectivity issue`);
+    } else if (err.message.includes("database") || err.message.includes("cosmos")) {
+      userMessage = "We're having trouble accessing our database. Please try again in a moment.";
+      statusCode = 503;
+      ctx.error(`🔥 CREATE LOAN: Database connection issue`);
+    }
+
     return {
-      status: 500,
-      jsonBody: { error: err.message }
+      status: statusCode,
+      jsonBody: { 
+        success: false,
+        error: err.message,
+        userFriendlyMessage: userMessage,
+        timestamp: new Date().toISOString(),
+        retryable: statusCode >= 500,
+        supportMessage: statusCode >= 500 ? "If this problem persists, please contact support with this error ID." : undefined,
+        errorId: ctx.invocationId
+      }
     };
   }
 }
