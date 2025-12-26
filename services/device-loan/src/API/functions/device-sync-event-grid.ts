@@ -2,6 +2,7 @@
 
 import { app, InvocationContext } from "@azure/functions";
 import { DeviceSnapshotRepository } from "../../Infrastructure/Persistence/DeviceSnapshotRepository";
+import { appServices } from "../../appServices";
 
 /**
  * Event Grid Trigger: Device Catalog Sync
@@ -35,6 +36,12 @@ export async function deviceSyncEventGrid(event: any, ctx: InvocationContext): P
         });
 
         ctx.log(`✅ Sync applied for device: ${data.model}`);
+        
+        // Process waitlist if device has available count
+        if (data.availableCount > 0) {
+          ctx.log(`🔄 Processing waitlist for device: ${data.id} (${data.availableCount} available)`);
+          await appServices.processWaitlistHandler.execute(data.id);
+        }
         break;
 
       case "Device.Deleted":
