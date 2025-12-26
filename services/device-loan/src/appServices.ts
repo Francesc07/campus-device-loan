@@ -76,7 +76,8 @@ const processWaitlistUseCase = new ProcessWaitlistUseCase(
   loanRepo,
   snapshotRepo,
   eventPublisher,
-  emailService
+  emailService,
+  userService
 );
 
 const catalogServiceUrl = process.env.CATALOG_SERVICE_URL || "https://devicecatalog-dev-ab07-func.azurewebsites.net";

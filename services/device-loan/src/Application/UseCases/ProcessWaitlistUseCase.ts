@@ -3,6 +3,7 @@ import { IDeviceSnapshotRepository } from "../Interfaces/IDeviceSnapshotReposito
 import { ILoanEventPublisher } from "../Interfaces/ILoanEventPublisher";
 import { LoanStatus } from "../../Domain/Enums/LoanStatus";
 import { EmailService } from "../../Infrastructure/Notifications/EmailService";
+import { IUserService } from "../Interfaces/IUserService";
 
 /**
  * ProcessWaitlistUseCase
@@ -18,7 +19,8 @@ export class ProcessWaitlistUseCase {
     private loanRepo: ILoanRepository,
     private snapshotRepo: IDeviceSnapshotRepository,
     private eventPublisher: ILoanEventPublisher,
-    private emailService: EmailService
+    private emailService: EmailService,
+    private userService: IUserService
   ) {}
 
   async execute(deviceId: string): Promise<void> {
@@ -56,6 +58,18 @@ export class ProcessWaitlistUseCase {
       if (!loan.deviceBrand) loan.deviceBrand = device.brand;
       if (!loan.deviceModel) loan.deviceModel = device.model;
 
+      // Fetch user email if not already present (for legacy loans)
+      if (!loan.userEmail && loan.userId) {
+        try {
+          const email = await this.userService.getUserEmail(loan.userId);
+          if (email) {
+            loan.userEmail = email;
+          }
+        } catch (err) {
+          // Continue without email if fetch fails
+        }
+      }
+
       await this.loanRepo.update(loan);
 
       // Notify that the device is now available for this user
@@ -69,15 +83,17 @@ export class ProcessWaitlistUseCase {
         newStatus: LoanStatus.Pending
       });
 
-      // Send email notification to user
-      await this.emailService.sendWaitlistProcessedEmail({
-        userEmail: loan.userEmail,
-        userName:  loan.userEmail,
-        deviceBrand: device.brand,
-        deviceModel: device.model,
-        deviceImageUrl: device.imageUrl,
-        loanId: loan.id
-      });
+      // Send email notification to user (only if email address is available)
+      if (loan.userEmail) {
+        await this.emailService.sendWaitlistProcessedEmail({
+          userEmail: loan.userEmail,
+          userName: loan.userEmail,
+          deviceBrand: device.brand,
+          deviceModel: device.model,
+          deviceImageUrl: device.imageUrl,
+          loanId: loan.id
+        });
+      }
     }
   }
 }
