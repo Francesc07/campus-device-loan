@@ -6,6 +6,7 @@ import { LoanRecord } from "../../Domain/Entities/LoanRecord";
 import { LoanStatus } from "../../Domain/Enums/LoanStatus";
 import { v4 as uuidv4 } from "uuid";
 import { IUserService } from "../Interfaces/IUserService";
+import { EmailService } from "../../Infrastructure/Notifications/EmailService";
 
 /**
  * Use case for creating a new device loan.
@@ -18,7 +19,8 @@ export class CreateLoanUseCase {
     private loanRepo: ILoanRepository,
     private snapshotRepo: IDeviceSnapshotRepository,
     private eventPublisher: ILoanEventPublisher,
-    private userService: IUserService
+    private userService: IUserService,
+    private emailService: EmailService
   ) {}
 
   /**
@@ -76,6 +78,18 @@ export class CreateLoanUseCase {
       await this.eventPublisher.publish("Loan.Waitlisted", {
         ...loan,
         message: `Device ${device.brand} ${device.model} is currently unavailable. Request added to waitlist.`
+      });
+    }
+
+    // Send email notification to user
+    if (userEmail) {
+      await this.emailService.sendLoanCreatedEmail({
+        userEmail: userEmail,
+        userName: userEmail, // Can be enhanced with actual user name
+        deviceBrand: device.brand,
+        deviceModel: device.model,
+        isWaitlisted: !isAvailable,
+        loanId: loan.id
       });
     }
 

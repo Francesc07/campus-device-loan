@@ -7,6 +7,7 @@ import { CosmosLoanRepository } from "./Infrastructure/Persistence/CosmosLoanRep
 import { DeviceSnapshotRepository } from "./Infrastructure/Persistence/DeviceSnapshotRepository";
 import { LoanEventPublisher } from "./Infrastructure/EventGrid/LoanEventPublisher";
 import { Auth0UserService } from "./Infrastructure/Users/Auth0UserService";
+import { EmailService } from "./Infrastructure/Notifications/EmailService";
 
 // UseCases
 import {CreateLoanUseCase} from "./Application/UseCases/CreateLoanUseCase";
@@ -43,6 +44,7 @@ import { StaffEventsProcessor } from "./Infrastructure/EventGrid/StaffEventsProc
 const loanRepo = new CosmosLoanRepository();
 const snapshotRepo = new DeviceSnapshotRepository();
 const eventPublisher = new LoanEventPublisher();  
+const emailService = new EmailService();
 
 // Auth0 config from environment
 const auth0Domain = process.env.AUTH0_DOMAIN || "";
@@ -57,7 +59,8 @@ const createLoanUseCase = new CreateLoanUseCase(
   loanRepo,
   snapshotRepo,
   eventPublisher,
-  userService // inject user service
+  userService, // inject user service
+  emailService // inject email service
 );
 
 const cancelLoanUseCase = new CancelLoanUseCase(loanRepo, eventPublisher);
@@ -72,7 +75,8 @@ const getLoanByIdUseCase = new GetLoanByIdUseCase(loanRepo);
 const processWaitlistUseCase = new ProcessWaitlistUseCase(
   loanRepo,
   snapshotRepo,
-  eventPublisher
+  eventPublisher,
+  emailService
 );
 
 const catalogServiceUrl = process.env.CATALOG_SERVICE_URL || "https://devicecatalog-dev-ab07-func.azurewebsites.net";
@@ -137,4 +141,7 @@ export const appServices = {
 
   // Auth0 User Service
   userService,
+
+  // Email Service
+  emailService,
 };

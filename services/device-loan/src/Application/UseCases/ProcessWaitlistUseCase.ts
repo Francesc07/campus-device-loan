@@ -2,6 +2,7 @@ import { ILoanRepository } from "../Interfaces/ILoanRepository";
 import { IDeviceSnapshotRepository } from "../Interfaces/IDeviceSnapshotRepository";
 import { ILoanEventPublisher } from "../Interfaces/ILoanEventPublisher";
 import { LoanStatus } from "../../Domain/Enums/LoanStatus";
+import { EmailService } from "../../Infrastructure/Notifications/EmailService";
 
 /**
  * ProcessWaitlistUseCase
@@ -10,12 +11,14 @@ import { LoanStatus } from "../../Domain/Enums/LoanStatus";
  * 1. Checks if there are any waitlisted requests for that device
  * 2. Moves the first waitlisted request to Pending status
  * 3. Publishes an event to notify the user and reservation service
+ * 4. Sends email notification to the user
  */
 export class ProcessWaitlistUseCase {
   constructor(
     private loanRepo: ILoanRepository,
     private snapshotRepo: IDeviceSnapshotRepository,
-    private eventPublisher: ILoanEventPublisher
+    private eventPublisher: ILoanEventPublisher,
+    private emailService: EmailService
   ) {}
 
   async execute(deviceId: string): Promise<void> {
@@ -64,6 +67,16 @@ export class ProcessWaitlistUseCase {
         message: `Device ${device.brand} ${device.model} is now available for your loan request`,
         previousStatus: LoanStatus.Waitlisted,
         newStatus: LoanStatus.Pending
+      });
+
+      // Send email notification to user
+      await this.emailService.sendWaitlistProcessedEmail({
+        userEmail: loan.userEmail,
+        userName:  loan.userEmail,
+        deviceBrand: device.brand,
+        deviceModel: device.model,
+        deviceImageUrl: device.imageUrl,
+        loanId: loan.id
       });
     }
   }
