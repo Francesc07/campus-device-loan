@@ -6,6 +6,7 @@ import { MockLoanRepository } from "../mocks/MockLoanRepository";
 import { MockDeviceSnapshotRepository } from "../mocks/MockDeviceSnapshotRepository";
 import { MockLoanEventPublisher } from "../mocks/MockLoanEventPublisher";
 import { MockUserService } from "../mocks/MockUserService";
+import { MockEmailService } from "../mocks/MockEmailService";
 import { CreateLoanDto } from "../../src/Application/Dtos/CreateLoanDto";
 import { CancelLoanDto } from "../../src/Application/Dtos/CancelLoanDto";
 import { ReservationEventDTO } from "../../src/Application/Dtos/ReservationEventDTO";
@@ -21,13 +22,15 @@ describe('Idempotency Tests', () => {
   let mockSnapshotRepo: MockDeviceSnapshotRepository;
   let mockEventPublisher: MockLoanEventPublisher;
   let mockUserService: MockUserService;
+  let mockEmailService: MockEmailService;
 
   beforeEach(() => {
     mockLoanRepo = new MockLoanRepository();
     mockSnapshotRepo = new MockDeviceSnapshotRepository();
     mockEventPublisher = new MockLoanEventPublisher();
     mockUserService = new MockUserService();
-    createUseCase = new CreateLoanUseCase(mockLoanRepo, mockSnapshotRepo, mockEventPublisher, mockUserService);
+    mockEmailService = new MockEmailService();
+    createUseCase = new CreateLoanUseCase(mockLoanRepo, mockSnapshotRepo, mockEventPublisher, mockUserService, mockEmailService as any);
     cancelUseCase = new CancelLoanUseCase(mockLoanRepo, mockEventPublisher);
     activateUseCase = new ActivateLoanUseCase(mockLoanRepo, mockEventPublisher);
   });

@@ -4,6 +4,7 @@ import { MockLoanRepository } from "../../mocks/MockLoanRepository";
 import { MockDeviceSnapshotRepository } from "../../mocks/MockDeviceSnapshotRepository";
 import { MockLoanEventPublisher } from "../../mocks/MockLoanEventPublisher";
 import { MockUserService } from "../../mocks/MockUserService";
+import { MockEmailService } from "../../mocks/MockEmailService";
 import { CreateLoanDto } from "../../../src/Application/Dtos/CreateLoanDto";
 import { LoanStatus } from "../../../src/Domain/Enums/LoanStatus";
 import { availableDevice, unavailableDevice, singleAvailableDevice } from "../../fixtures/deviceFixtures";
@@ -14,13 +15,15 @@ describe('CreateLoanUseCase', () => {
   let mockSnapshotRepo: MockDeviceSnapshotRepository;
   let mockEventPublisher: MockLoanEventPublisher;
   let mockUserService: MockUserService;
+  let mockEmailService: MockEmailService;
 
   beforeEach(() => {
     mockLoanRepo = new MockLoanRepository();
     mockSnapshotRepo = new MockDeviceSnapshotRepository();
     mockEventPublisher = new MockLoanEventPublisher();
     mockUserService = new MockUserService();
-    useCase = new CreateLoanUseCase(mockLoanRepo, mockSnapshotRepo, mockEventPublisher, mockUserService);
+    mockEmailService = new MockEmailService();
+    useCase = new CreateLoanUseCase(mockLoanRepo, mockSnapshotRepo, mockEventPublisher, mockUserService, mockEmailService as any);
   });
 
   afterEach(() => {
