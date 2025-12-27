@@ -48,13 +48,20 @@ export class CreateLoanUseCase {
 
     // Fetch user email from user service using accessToken
     let userEmail: string | undefined = undefined;
-    console.log(`📧 Fetching user email for userId: ${dto.userId}, hasAccessToken: ${!!accessToken}`);
-    try {
-      userEmail = (await this.userService.getUserEmail(dto.userId, accessToken)) || undefined;
-      console.log(`📧 User email fetched: ${userEmail || 'null'}`);
-    } catch (err: any) {
-      console.error(`❌ Failed to fetch user email: ${err.message}`);
-      userEmail = undefined;
+    
+    // Prefer user email from frontend (ID token claims) over Auth0 API fetch
+    if (dto.userEmail) {
+      console.log(`📧 Using user email from request: ${dto.userEmail}`);
+      userEmail = dto.userEmail;
+    } else {
+      console.log(`📧 Fetching user email for userId: ${dto.userId}, hasAccessToken: ${!!accessToken}`);
+      try {
+        userEmail = (await this.userService.getUserEmail(dto.userId, accessToken)) || undefined;
+        console.log(`📧 User email fetched: ${userEmail || 'null'}`);
+      } catch (err: any) {
+        console.error(`❌ Failed to fetch user email: ${err.message}`);
+        userEmail = undefined;
+      }
     }
 
     const loan: LoanRecord = {
