@@ -48,9 +48,12 @@ export class CreateLoanUseCase {
 
     // Fetch user email from user service using accessToken
     let userEmail: string | undefined = undefined;
+    console.log(`📧 Fetching user email for userId: ${dto.userId}, hasAccessToken: ${!!accessToken}`);
     try {
       userEmail = (await this.userService.getUserEmail(dto.userId, accessToken)) || undefined;
-    } catch (err) {
+      console.log(`📧 User email fetched: ${userEmail || 'null'}`);
+    } catch (err: any) {
+      console.error(`❌ Failed to fetch user email: ${err.message}`);
       userEmail = undefined;
     }
 
@@ -82,15 +85,24 @@ export class CreateLoanUseCase {
     }
 
     // Send email notification to user
+    console.log(`📧 Attempting to send email notification - hasEmail: ${!!userEmail}`);
     if (userEmail) {
-      await this.emailService.sendLoanCreatedEmail({
-        userEmail: userEmail,
-        userName: userEmail, // Can be enhanced with actual user name
-        deviceBrand: device.brand,
-        deviceModel: device.model,
-        isWaitlisted: !isAvailable,
-        loanId: loan.id
-      });
+      console.log(`📧 Sending loan created email to: ${userEmail}`);
+      try {
+        await this.emailService.sendLoanCreatedEmail({
+          userEmail: userEmail,
+          userName: userEmail, // Can be enhanced with actual user name
+          deviceBrand: device.brand,
+          deviceModel: device.model,
+          isWaitlisted: !isAvailable,
+          loanId: loan.id
+        });
+        console.log(`✅ Email sent successfully to: ${userEmail}`);
+      } catch (emailErr: any) {
+        console.error(`❌ Failed to send email: ${emailErr.message}`);
+      }
+    } else {
+      console.warn(`⚠️ No user email available - skipping email notification for userId: ${dto.userId}`);
     }
 
     return loan;
