@@ -18,7 +18,9 @@
     "load-test": "./run-load-test.sh",
     "load-test:dev": "./run-load-test.sh dev 300",
     "load-test:test": "./run-load-test.sh test 600",
-    "load-test:prod": "./run-load-test.sh prod 900"
+    "load-test:prod": "./run-load-test.sh prod 900",
+    "test:auth0": "ts-node test-auth0-direct.ts",
+    "test:sendgrid": "ts-node test-sendgrid.ts"
   },
   "keywords": [],
   "author": "",
