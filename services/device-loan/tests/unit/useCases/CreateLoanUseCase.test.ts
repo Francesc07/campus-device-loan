@@ -198,4 +198,107 @@ describe('CreateLoanUseCase', () => {
       expect(mockLoanRepo.getCallCount('create')).toBe(1);
     });
   });
+
+  describe('Email Notifications', () => {
+    it('should send email when userEmail is provided', async () => {
+      mockSnapshotRepo.addSnapshot(availableDevice);
+
+      const dto: CreateLoanDto = {
+        userId: 'user-123',
+        deviceId: availableDevice.id,
+        userEmail: 'test@example.com'
+      };
+
+      await useCase.execute(dto);
+
+      expect(mockEmailService.sendLoanCreatedEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userEmail: 'test@example.com',
+          deviceBrand: availableDevice.brand,
+          deviceModel: availableDevice.model
+        })
+      );
+    });
+
+    it('should send waitlist email when device unavailable', async () => {
+      mockSnapshotRepo.addSnapshot(unavailableDevice);
+
+      const dto: CreateLoanDto = {
+        userId: 'user-123',
+        deviceId: unavailableDevice.id,
+        userEmail: 'test@example.com'
+      };
+
+      await useCase.execute(dto);
+
+      expect(mockEmailService.sendLoanCreatedEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userEmail: 'test@example.com',
+          isWaitlisted: true
+        })
+      );
+    });
+
+    it('should fetch email from Auth0 when not provided', async () => {
+      mockSnapshotRepo.addSnapshot(availableDevice);
+      mockUserService.setUserEmail('auth0-fetched@example.com');
+
+      const dto: CreateLoanDto = {
+        userId: 'user-123',
+        deviceId: availableDevice.id
+      };
+
+      await useCase.execute(dto, 'mock-access-token');
+
+      expect(mockUserService.getUserEmail).toHaveBeenCalledWith('user-123', 'mock-access-token');
+      expect(mockEmailService.sendLoanCreatedEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userEmail: 'auth0-fetched@example.com'
+        })
+      );
+    });
+
+    it('should skip email when no email available', async () => {
+      mockSnapshotRepo.addSnapshot(availableDevice);
+      mockUserService.setUserEmail(null);
+
+      const dto: CreateLoanDto = {
+        userId: 'user-123',
+        deviceId: availableDevice.id
+      };
+
+      await useCase.execute(dto);
+
+      expect(mockEmailService.sendLoanCreatedEmail).not.toHaveBeenCalled();
+    });
+
+    it('should not throw when email sending fails', async () => {
+      mockSnapshotRepo.addSnapshot(availableDevice);
+      mockEmailService.sendLoanCreatedEmail.mockRejectedValueOnce(new Error('SendGrid error'));
+
+      const dto: CreateLoanDto = {
+        userId: 'user-123',
+        deviceId: availableDevice.id,
+        userEmail: 'test@example.com'
+      };
+
+      await expect(useCase.execute(dto)).resolves.toBeDefined();
+    });
+
+    it('should still create loan when email fails', async () => {
+      mockSnapshotRepo.addSnapshot(availableDevice);
+      mockEmailService.sendLoanCreatedEmail.mockRejectedValueOnce(new Error('SendGrid error'));
+
+      const dto: CreateLoanDto = {
+        userId: 'user-123',
+        deviceId: availableDevice.id,
+        userEmail: 'test@example.com'
+      };
+
+      const result = await useCase.execute(dto);
+
+      expect(result.status).toBe(LoanStatus.Pending);
+      expect(mockLoanRepo.getCallCount('create')).toBe(1);
+    });
+  });
 });

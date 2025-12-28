@@ -43,14 +43,19 @@ export class CancelLoanUseCase {
     
     // Send email notification to user
     if (loan.userEmail) {
-      console.log(`📧 Sending loan cancelled email to: ${loan.userEmail}`);
-      await this.emailService.sendLoanCancelledEmail({
-        userEmail: loan.userEmail,
-        userName: loan.userEmail,
-        deviceBrand: loan.deviceBrand || 'Device',
-        deviceModel: loan.deviceModel || '',
-        loanId: loan.id
-      });
+      try {
+        console.log(`📧 Sending loan cancelled email to: ${loan.userEmail}`);
+        await this.emailService.sendLoanCancelledEmail({
+          userEmail: loan.userEmail,
+          userName: loan.userEmail,
+          deviceBrand: loan.deviceBrand || 'Device',
+          deviceModel: loan.deviceModel || '',
+          loanId: loan.id
+        });
+        console.log(`✅ Cancellation email sent successfully to: ${loan.userEmail}`);
+      } catch (emailErr: any) {
+        console.error(`❌ Failed to send cancellation email: ${emailErr.message}`);
+      }
     }
     
     return loan;

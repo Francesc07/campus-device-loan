@@ -192,4 +192,95 @@ describe('ActivateLoanUseCase', () => {
       expect(mockLoanRepo.getCallCount('update')).toBe(1);
     });
   });
+
+  describe('Email Notifications', () => {
+    it('should send activation email when loan has userEmail', async () => {
+      const loan = createLoanRecord({
+        userId: 'user-123',
+        reservationId: 'res-456',
+        status: LoanStatus.Pending,
+        userEmail: 'test@example.com',
+        deviceBrand: 'Apple',
+        deviceModel: 'iPhone 13'
+      });
+      await mockLoanRepo.create(loan);
+
+      const event: ReservationEventDTO = {
+        reservationId: 'res-456',
+        userId: 'user-123',
+        deviceId: loan.deviceId,
+        eventType: 'Reservation.Confirmed'
+      };
+
+      await useCase.execute(event);
+
+      expect(mockEmailService.sendLoanActivatedEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userEmail: 'test@example.com',
+          deviceBrand: 'Apple',
+          deviceModel: 'iPhone 13'
+        })
+      );
+    });
+
+    it('should skip email when loan has no userEmail', async () => {
+      const loan = createLoanRecord({
+        reservationId: 'res-456',
+        status: LoanStatus.Pending
+      });
+      await mockLoanRepo.create(loan);
+
+      const event: ReservationEventDTO = {
+        reservationId: 'res-456',
+        userId: loan.userId,
+        deviceId: loan.deviceId,
+        eventType: 'Reservation.Confirmed'
+      };
+
+      await useCase.execute(event);
+
+      expect(mockEmailService.sendLoanActivatedEmail).not.toHaveBeenCalled();
+    });
+
+    it('should not throw when email sending fails', async () => {
+      const loan = createLoanRecord({
+        reservationId: 'res-456',
+        status: LoanStatus.Pending,
+        userEmail: 'test@example.com'
+      });
+      await mockLoanRepo.create(loan);
+      mockEmailService.sendLoanActivatedEmail.mockRejectedValueOnce(new Error('SendGrid error'));
+
+      const event: ReservationEventDTO = {
+        reservationId: 'res-456',
+        userId: loan.userId,
+        deviceId: loan.deviceId,
+        eventType: 'Reservation.Confirmed'
+      };
+
+      await expect(useCase.execute(event)).resolves.toBeDefined();
+    });
+
+    it('should still activate loan when email fails', async () => {
+      const loan = createLoanRecord({
+        reservationId: 'res-456',
+        status: LoanStatus.Pending,
+        userEmail: 'test@example.com'
+      });
+      await mockLoanRepo.create(loan);
+      mockEmailService.sendLoanActivatedEmail.mockRejectedValueOnce(new Error('SendGrid error'));
+
+      const event: ReservationEventDTO = {
+        reservationId: 'res-456',
+        userId: loan.userId,
+        deviceId: loan.deviceId,
+        eventType: 'Reservation.Confirmed'
+      };
+
+      const result = await useCase.execute(event);
+
+      expect(result!.status).toBe(LoanStatus.Active);
+      expect(mockLoanRepo.getCallCount('update')).toBe(1);
+    });
+  });
 });

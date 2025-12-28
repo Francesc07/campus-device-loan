@@ -170,4 +170,90 @@ describe('CancelLoanUseCase', () => {
       expect(result.cancelledAt).not.toBe(originalCancelledAt);
     });
   });
+
+  describe('Email Notifications', () => {
+    it('should send cancellation email when loan has userEmail', async () => {
+      const loan = createLoanRecord({
+        id: 'loan-123',
+        userId: 'user-456',
+        status: LoanStatus.Pending,
+        userEmail: 'test@example.com',
+        deviceBrand: 'Samsung',
+        deviceModel: 'Galaxy S21'
+      });
+      await mockLoanRepo.create(loan);
+
+      const dto: CancelLoanDto = {
+        loanId: loan.id,
+        userId: loan.userId
+      };
+
+      await useCase.execute(dto);
+
+      expect(mockEmailService.sendLoanCancelledEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userEmail: 'test@example.com',
+          deviceBrand: 'Samsung',
+          deviceModel: 'Galaxy S21'
+        })
+      );
+    });
+
+    it('should skip email when loan has no userEmail', async () => {
+      const loan = createLoanRecord({
+        id: 'loan-123',
+        userId: 'user-456',
+        status: LoanStatus.Pending
+      });
+      await mockLoanRepo.create(loan);
+
+      const dto: CancelLoanDto = {
+        loanId: loan.id,
+        userId: loan.userId
+      };
+
+      await useCase.execute(dto);
+
+      expect(mockEmailService.sendLoanCancelledEmail).not.toHaveBeenCalled();
+    });
+
+    it('should not throw when email sending fails', async () => {
+      const loan = createLoanRecord({
+        id: 'loan-123',
+        userId: 'user-456',
+        status: LoanStatus.Pending,
+        userEmail: 'test@example.com'
+      });
+      await mockLoanRepo.create(loan);
+      mockEmailService.sendLoanCancelledEmail.mockRejectedValueOnce(new Error('SendGrid error'));
+
+      const dto: CancelLoanDto = {
+        loanId: loan.id,
+        userId: loan.userId
+      };
+
+      await expect(useCase.execute(dto)).resolves.toBeDefined();
+    });
+
+    it('should still cancel loan when email fails', async () => {
+      const loan = createLoanRecord({
+        id: 'loan-123',
+        userId: 'user-456',
+        status: LoanStatus.Pending,
+        userEmail: 'test@example.com'
+      });
+      await mockLoanRepo.create(loan);
+      mockEmailService.sendLoanCancelledEmail.mockRejectedValueOnce(new Error('SendGrid error'));
+
+      const dto: CancelLoanDto = {
+        loanId: loan.id,
+        userId: loan.userId
+      };
+
+      const result = await useCase.execute(dto);
+
+      expect(result.status).toBe(LoanStatus.Cancelled);
+      expect(mockLoanRepo.getCallCount('update')).toBe(1);
+    });
+  });
 });

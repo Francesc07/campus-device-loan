@@ -7,40 +7,87 @@ import { EmailService } from "../../src/Infrastructure/Notifications/EmailServic
  */
 export class MockEmailService {
   public sentEmails: Array<{
-    type: 'waitlist' | 'created';
+    type: 'waitlist' | 'created' | 'activated' | 'cancelled' | 'returned';
     params: any;
   }> = [];
 
-  async sendWaitlistProcessedEmail(params: {
+  public sendWaitlistProcessedEmail = jest.fn().mockImplementation(async (params: {
     userEmail: string;
     userName: string;
     deviceBrand: string;
     deviceModel: string;
     deviceImageUrl?: string;
     loanId: string;
-  }): Promise<void> {
+  }): Promise<void> => {
     this.sentEmails.push({
       type: 'waitlist',
       params,
     });
-  }
+  });
 
-  async sendLoanCreatedEmail(params: {
+  public sendLoanCreatedEmail = jest.fn().mockImplementation(async (params: {
     userEmail: string;
     userName: string;
     deviceBrand: string;
     deviceModel: string;
     isWaitlisted: boolean;
     loanId: string;
-  }): Promise<void> {
+  }): Promise<void> => {
     this.sentEmails.push({
       type: 'created',
       params,
     });
-  }
+  });
+
+  public sendLoanActivatedEmail = jest.fn().mockImplementation(async (params: {
+    userEmail: string;
+    userName: string;
+    deviceBrand: string;
+    deviceModel: string;
+    dueDate: string;
+    loanId: string;
+  }): Promise<void> => {
+    this.sentEmails.push({
+      type: 'activated',
+      params,
+    });
+  });
+
+  public sendLoanCancelledEmail = jest.fn().mockImplementation(async (params: {
+    userEmail: string;
+    userName: string;
+    deviceBrand: string;
+    deviceModel: string;
+    loanId: string;
+  }): Promise<void> => {
+    this.sentEmails.push({
+      type: 'cancelled',
+      params,
+    });
+  });
+
+  public sendLoanReturnedEmail = jest.fn().mockImplementation(async (params: {
+    userEmail: string;
+    userName: string;
+    deviceBrand: string;
+    deviceModel: string;
+    returnDate: string;
+    wasLate: boolean;
+    loanId: string;
+  }): Promise<void> => {
+    this.sentEmails.push({
+      type: 'returned',
+      params,
+    });
+  });
 
   clear(): void {
     this.sentEmails = [];
+    this.sendWaitlistProcessedEmail.mockClear();
+    this.sendLoanCreatedEmail.mockClear();
+    this.sendLoanActivatedEmail.mockClear();
+    this.sendLoanCancelledEmail.mockClear();
+    this.sendLoanReturnedEmail.mockClear();
   }
 
   getLastEmail() {

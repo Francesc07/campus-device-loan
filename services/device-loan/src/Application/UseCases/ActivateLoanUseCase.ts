@@ -38,15 +38,20 @@ export class ActivateLoanUseCase {
     
     // Send email notification to user
     if (loan.userEmail) {
-      console.log(`📧 Sending loan activated email to: ${loan.userEmail}`);
-      await this.emailService.sendLoanActivatedEmail({
-        userEmail: loan.userEmail,
-        userName: loan.userEmail,
-        deviceBrand: loan.deviceBrand || 'Device',
-        deviceModel: loan.deviceModel || '',
-        dueDate: loan.dueDate,
-        loanId: loan.id
-      });
+      try {
+        console.log(`📧 Sending loan activated email to: ${loan.userEmail}`);
+        await this.emailService.sendLoanActivatedEmail({
+          userEmail: loan.userEmail,
+          userName: loan.userEmail,
+          deviceBrand: loan.deviceBrand || 'Device',
+          deviceModel: loan.deviceModel || '',
+          dueDate: loan.dueDate,
+          loanId: loan.id
+        });
+        console.log(`✅ Activation email sent successfully to: ${loan.userEmail}`);
+      } catch (emailErr: any) {
+        console.error(`❌ Failed to send activation email: ${emailErr.message}`);
+      }
     }
     
     return loan;
