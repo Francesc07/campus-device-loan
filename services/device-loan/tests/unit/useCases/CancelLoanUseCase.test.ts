@@ -2,6 +2,7 @@
 import { CancelLoanUseCase } from "../../../src/Application/UseCases/CancelLoanUseCase";
 import { MockLoanRepository } from "../../mocks/MockLoanRepository";
 import { MockLoanEventPublisher } from "../../mocks/MockLoanEventPublisher";
+import { MockEmailService } from "../../mocks/MockEmailService";
 import { CancelLoanDto } from "../../../src/Application/Dtos/CancelLoanDto";
 import { LoanStatus } from "../../../src/Domain/Enums/LoanStatus";
 import { createLoanRecord, pendingLoan, activeLoan } from "../../fixtures/loanFixtures";
@@ -10,11 +11,13 @@ describe('CancelLoanUseCase', () => {
   let useCase: CancelLoanUseCase;
   let mockLoanRepo: MockLoanRepository;
   let mockEventPublisher: MockLoanEventPublisher;
+  let mockEmailService: MockEmailService;
 
   beforeEach(() => {
     mockLoanRepo = new MockLoanRepository();
     mockEventPublisher = new MockLoanEventPublisher();
-    useCase = new CancelLoanUseCase(mockLoanRepo, mockEventPublisher);
+    mockEmailService = new MockEmailService();
+    useCase = new CancelLoanUseCase(mockLoanRepo, mockEventPublisher, mockEmailService as any);
   });
 
   afterEach(() => {

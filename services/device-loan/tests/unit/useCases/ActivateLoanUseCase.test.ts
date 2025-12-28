@@ -2,6 +2,7 @@
 import { ActivateLoanUseCase } from "../../../src/Application/UseCases/ActivateLoanUseCase";
 import { MockLoanRepository } from "../../mocks/MockLoanRepository";
 import { MockLoanEventPublisher } from "../../mocks/MockLoanEventPublisher";
+import { MockEmailService } from "../../mocks/MockEmailService";
 import { ReservationEventDTO } from "../../../src/Application/Dtos/ReservationEventDTO";
 import { LoanStatus } from "../../../src/Domain/Enums/LoanStatus";
 import { createLoanRecord } from "../../fixtures/loanFixtures";
@@ -10,11 +11,13 @@ describe('ActivateLoanUseCase', () => {
   let useCase: ActivateLoanUseCase;
   let mockLoanRepo: MockLoanRepository;
   let mockEventPublisher: MockLoanEventPublisher;
+  let mockEmailService: MockEmailService;
 
   beforeEach(() => {
     mockLoanRepo = new MockLoanRepository();
     mockEventPublisher = new MockLoanEventPublisher();
-    useCase = new ActivateLoanUseCase(mockLoanRepo, mockEventPublisher);
+    mockEmailService = new MockEmailService();
+    useCase = new ActivateLoanUseCase(mockLoanRepo, mockEventPublisher, mockEmailService as any);
   });
 
   afterEach(() => {

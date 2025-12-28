@@ -37,8 +37,8 @@ describe('Loan Workflow Integration Tests', () => {
     mockEmailService = new MockEmailService();
 
     createLoanUseCase = new CreateLoanUseCase(mockLoanRepo, mockSnapshotRepo, mockEventPublisher, mockUserService, mockEmailService as any);
-    cancelLoanUseCase = new CancelLoanUseCase(mockLoanRepo, mockEventPublisher);
-    activateLoanUseCase = new ActivateLoanUseCase(mockLoanRepo, mockEventPublisher);
+    cancelLoanUseCase = new CancelLoanUseCase(mockLoanRepo, mockEventPublisher, mockEmailService as any);
+    activateLoanUseCase = new ActivateLoanUseCase(mockLoanRepo, mockEventPublisher, mockEmailService as any);
     getLoanUseCase = new GetLoanByIdUseCase(mockLoanRepo);
     listLoansUseCase = new ListLoansUseCase(mockLoanRepo);
   });

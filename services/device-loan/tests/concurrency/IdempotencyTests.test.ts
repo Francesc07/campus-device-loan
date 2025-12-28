@@ -31,8 +31,8 @@ describe('Idempotency Tests', () => {
     mockUserService = new MockUserService();
     mockEmailService = new MockEmailService();
     createUseCase = new CreateLoanUseCase(mockLoanRepo, mockSnapshotRepo, mockEventPublisher, mockUserService, mockEmailService as any);
-    cancelUseCase = new CancelLoanUseCase(mockLoanRepo, mockEventPublisher);
-    activateUseCase = new ActivateLoanUseCase(mockLoanRepo, mockEventPublisher);
+    cancelUseCase = new CancelLoanUseCase(mockLoanRepo, mockEventPublisher, mockEmailService as any);
+    activateUseCase = new ActivateLoanUseCase(mockLoanRepo, mockEventPublisher, mockEmailService as any);
   });
 
   afterEach(() => {
