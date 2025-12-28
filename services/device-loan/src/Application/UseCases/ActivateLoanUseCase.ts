@@ -2,6 +2,7 @@ import { ILoanRepository } from "../Interfaces/ILoanRepository";
 import { ILoanEventPublisher } from "../Interfaces/ILoanEventPublisher";
 import { ReservationEventDTO } from "../Dtos/ReservationEventDTO";
 import { LoanStatus } from "../../Domain/Enums/LoanStatus";
+import { EmailService } from "../../Infrastructure/Notifications/EmailService";
 
 /**
  * Use case for activating a loan when device is collected.
@@ -13,7 +14,8 @@ import { LoanStatus } from "../../Domain/Enums/LoanStatus";
 export class ActivateLoanUseCase {
   constructor(
     private readonly loanRepo: ILoanRepository,
-    private readonly eventPublisher: ILoanEventPublisher
+    private readonly eventPublisher: ILoanEventPublisher,
+    private readonly emailService: EmailService
   ) {}
 
   /**
@@ -33,6 +35,19 @@ export class ActivateLoanUseCase {
     
     // Publish activation event with full metadata for confirmation service
     await this.eventPublisher.publish("Loan.Activated", loan);
+    
+    // Send email notification to user
+    if (loan.userEmail) {
+      console.log(`📧 Sending loan activated email to: ${loan.userEmail}`);
+      await this.emailService.sendLoanActivatedEmail({
+        userEmail: loan.userEmail,
+        userName: loan.userEmail,
+        deviceBrand: loan.deviceBrand || 'Device',
+        deviceModel: loan.deviceModel || '',
+        dueDate: loan.dueDate,
+        loanId: loan.id
+      });
+    }
     
     return loan;
   }

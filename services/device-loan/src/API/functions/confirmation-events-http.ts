@@ -96,6 +96,19 @@ export async function confirmationEventsHttp(
             await appServices.loanRepo.update(returnLoan);
             context.log(`✅ Loan ${returnLoan.id} status: ${previousStatus} → Returned${wasOverdue ? ' (was overdue)' : ''}`);
 
+            // Send email notification to user
+            if (returnLoan.userEmail) {
+              context.log(`📧 Sending loan returned email to: ${returnLoan.userEmail}`);
+              await appServices.emailService.sendLoanReturnedEmail({
+                userEmail: returnLoan.userEmail,
+                userName: returnLoan.userEmail,
+                deviceBrand: returnLoan.deviceBrand || 'Device',
+                deviceModel: returnLoan.deviceModel || '',
+                loanId: returnLoan.id,
+                wasLate: wasOverdue
+              });
+            }
+
             // Process waitlist for this device since it's now available
             context.log(`🔄 Processing waitlist for device: ${returnLoan.deviceId}`);
             await appServices.processWaitlistHandler.execute(returnLoan.deviceId);

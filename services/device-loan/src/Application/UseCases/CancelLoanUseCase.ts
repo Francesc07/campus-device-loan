@@ -2,6 +2,7 @@ import { ILoanRepository } from "../Interfaces/ILoanRepository";
 import { ILoanEventPublisher } from "../Interfaces/ILoanEventPublisher";
 import { CancelLoanDto } from "../Dtos/CancelLoanDto";
 import { LoanStatus } from "../../Domain/Enums/LoanStatus";
+import { EmailService } from "../../Infrastructure/Notifications/EmailService";
 
 /**
  * Use case for cancelling an active or pending loan.
@@ -12,7 +13,8 @@ import { LoanStatus } from "../../Domain/Enums/LoanStatus";
 export class CancelLoanUseCase {
   constructor(
     private readonly loanRepo: ILoanRepository,
-    private readonly eventPublisher: ILoanEventPublisher
+    private readonly eventPublisher: ILoanEventPublisher,
+    private readonly emailService: EmailService
   ) {}
 
   /**
@@ -38,6 +40,18 @@ export class CancelLoanUseCase {
     
     // Publish cancellation event with full metadata
     await this.eventPublisher.publish("Loan.Cancelled", loan);
+    
+    // Send email notification to user
+    if (loan.userEmail) {
+      console.log(`📧 Sending loan cancelled email to: ${loan.userEmail}`);
+      await this.emailService.sendLoanCancelledEmail({
+        userEmail: loan.userEmail,
+        userName: loan.userEmail,
+        deviceBrand: loan.deviceBrand || 'Device',
+        deviceModel: loan.deviceModel || '',
+        loanId: loan.id
+      });
+    }
     
     return loan;
   }

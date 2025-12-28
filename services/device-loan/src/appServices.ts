@@ -63,8 +63,8 @@ const createLoanUseCase = new CreateLoanUseCase(
   emailService // inject email service
 );
 
-const cancelLoanUseCase = new CancelLoanUseCase(loanRepo, eventPublisher);
-const activateLoanUseCase = new ActivateLoanUseCase(loanRepo, eventPublisher);
+const cancelLoanUseCase = new CancelLoanUseCase(loanRepo, eventPublisher, emailService);
+const activateLoanUseCase = new ActivateLoanUseCase(loanRepo, eventPublisher, emailService);
 const linkReservationUseCase = new LinkReservationUseCase(loanRepo);
 const listLoansUseCase = new ListLoansUseCase(loanRepo);
 

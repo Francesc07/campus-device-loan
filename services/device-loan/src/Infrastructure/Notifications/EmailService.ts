@@ -257,6 +257,218 @@ export class EmailService {
   }
 
   /**
+   * Send loan activated notification (device collected)
+   */
+  async sendLoanActivatedEmail(params: {
+    userEmail: string;
+    userName: string;
+    deviceBrand: string;
+    deviceModel: string;
+    dueDate: string;
+    loanId: string;
+  }): Promise<void> {
+    const { userEmail, userName, deviceBrand, deviceModel, dueDate, loanId } = params;
+    const formattedDueDate = new Date(dueDate).toLocaleDateString();
+
+    const subject = `✅ Device Collected: ${deviceBrand} ${deviceModel}`;
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background-color: #2196F3; color: white; padding: 20px; text-align: center; border-radius: 5px; }
+    .content { background-color: #f9f9f9; padding: 20px; margin-top: 20px; border-radius: 5px; }
+    .device-info { background-color: white; padding: 15px; margin: 20px 0; border-left: 4px solid #2196F3; }
+    .warning-box { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
+    .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📦 Device Loan Active</h1>
+    </div>
+    
+    <div class="content">
+      <p>Hi ${userName},</p>
+      
+      <p>Your device loan is now active! You've successfully collected:</p>
+      
+      <div class="device-info">
+        <h3>${deviceBrand} ${deviceModel}</h3>
+        <p><strong>Loan ID:</strong> ${loanId}</p>
+        <p><strong>Due Date:</strong> ${formattedDueDate}</p>
+      </div>
+      
+      <div class="warning-box">
+        <p><strong>⚠️ Important Reminders:</strong></p>
+        <ul>
+          <li>Please return the device by <strong>${formattedDueDate}</strong></li>
+          <li>Keep the device in good condition</li>
+          <li>Report any issues immediately to IT Service Desk</li>
+          <li>Late returns may affect your ability to borrow future devices</li>
+        </ul>
+      </div>
+      
+      <p>If you need to extend your loan or have any questions, please contact the IT Service Desk.</p>
+    </div>
+    
+    <div class="footer">
+      <p>Campus Device Loan Service</p>
+      <p>This is an automated notification. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    await this.sendEmail({
+      to: userEmail,
+      subject,
+      html,
+    });
+  }
+
+  /**
+   * Send loan cancelled notification
+   */
+  async sendLoanCancelledEmail(params: {
+    userEmail: string;
+    userName: string;
+    deviceBrand: string;
+    deviceModel: string;
+    loanId: string;
+  }): Promise<void> {
+    const { userEmail, userName, deviceBrand, deviceModel, loanId } = params;
+
+    const subject = `❌ Loan Cancelled: ${deviceBrand} ${deviceModel}`;
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background-color: #f44336; color: white; padding: 20px; text-align: center; border-radius: 5px; }
+    .content { background-color: #f9f9f9; padding: 20px; margin-top: 20px; border-radius: 5px; }
+    .device-info { background-color: white; padding: 15px; margin: 20px 0; border-left: 4px solid #f44336; }
+    .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚫 Loan Cancelled</h1>
+    </div>
+    
+    <div class="content">
+      <p>Hi ${userName},</p>
+      
+      <p>Your device loan request has been cancelled:</p>
+      
+      <div class="device-info">
+        <h3>${deviceBrand} ${deviceModel}</h3>
+        <p><strong>Loan ID:</strong> ${loanId}</p>
+        <p><strong>Status:</strong> Cancelled</p>
+      </div>
+      
+      <p>If you need to request a device again, you can do so through the Campus Device Loan portal.</p>
+      
+      <p>If you did not request this cancellation, please contact the IT Service Desk immediately.</p>
+    </div>
+    
+    <div class="footer">
+      <p>Campus Device Loan Service</p>
+      <p>This is an automated notification. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    await this.sendEmail({
+      to: userEmail,
+      subject,
+      html,
+    });
+  }
+
+  /**
+   * Send loan returned notification
+   */
+  async sendLoanReturnedEmail(params: {
+    userEmail: string;
+    userName: string;
+    deviceBrand: string;
+    deviceModel: string;
+    loanId: string;
+    wasLate: boolean;
+  }): Promise<void> {
+    const { userEmail, userName, deviceBrand, deviceModel, loanId, wasLate } = params;
+
+    const subject = `✅ Device Returned: ${deviceBrand} ${deviceModel}`;
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; border-radius: 5px; }
+    .content { background-color: #f9f9f9; padding: 20px; margin-top: 20px; border-radius: 5px; }
+    .device-info { background-color: white; padding: 15px; margin: 20px 0; border-left: 4px solid #4CAF50; }
+    .warning-box { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
+    .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✅ Device Successfully Returned</h1>
+    </div>
+    
+    <div class="content">
+      <p>Hi ${userName},</p>
+      
+      <p>Thank you for returning your device:</p>
+      
+      <div class="device-info">
+        <h3>${deviceBrand} ${deviceModel}</h3>
+        <p><strong>Loan ID:</strong> ${loanId}</p>
+        <p><strong>Status:</strong> Returned</p>
+      </div>
+      
+      ${wasLate ? `
+      <div class="warning-box">
+        <p><strong>⚠️ Late Return Notice:</strong></p>
+        <p>This device was returned after its due date. Please ensure future loans are returned on time to maintain your borrowing privileges.</p>
+      </div>
+      ` : `
+      <p>🌟 Thank you for returning the device on time!</p>
+      `}
+      
+      <p>You can borrow another device anytime through the Campus Device Loan portal.</p>
+    </div>
+    
+    <div class="footer">
+      <p>Campus Device Loan Service</p>
+      <p>This is an automated notification. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    await this.sendEmail({
+      to: userEmail,
+      subject,
+      html,
+    });
+  }
+
+  /**
    * Strip HTML tags for plain text version
    */
   private stripHtml(html: string): string {
