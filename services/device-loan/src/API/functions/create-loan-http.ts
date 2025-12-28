@@ -31,8 +31,13 @@ export async function createLoanHttp(
   try {
     ctx.log(`📝 CREATE LOAN: Starting loan creation request`);
     const body = (await req.json()) as CreateLoanDto;
+    
+    // Debug: Log the entire request body to see what frontend is sending
+    ctx.log(`🔍 CREATE LOAN: Request body:`, JSON.stringify(body, null, 2));
 
-    const { userId, deviceId } = body;
+    const { userId, deviceId, userEmail } = body;
+    
+    ctx.log(`🔍 CREATE LOAN: Extracted fields - userId: ${userId}, deviceId: ${deviceId}, userEmail: ${userEmail || 'NOT PROVIDED'}`);
 
     if (!userId || !deviceId ) {
       ctx.warn(`⚠️ CREATE LOAN: Missing required fields - userId: ${!!userId}, deviceId: ${!!deviceId}`);
