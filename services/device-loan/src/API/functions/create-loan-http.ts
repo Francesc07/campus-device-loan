@@ -61,6 +61,7 @@ export async function createLoanHttp(
     const result = await appServices.createLoanHandler.execute({
       userId,
       deviceId,
+      userEmail, // Pass userEmail from frontend to use case
     }, accessToken);
 
     // Provide different messages based on loan status
