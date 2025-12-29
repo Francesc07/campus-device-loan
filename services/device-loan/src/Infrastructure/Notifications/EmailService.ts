@@ -66,8 +66,9 @@ export class EmailService {
     deviceModel: string;
     deviceImageUrl?: string;
     loanId: string;
+    reservationId?: string;
   }): Promise<void> {
-    const { userEmail, userName, deviceBrand, deviceModel, deviceImageUrl, loanId } = params;
+    const { userEmail, userName, deviceBrand, deviceModel, deviceImageUrl, loanId, reservationId } = params;
 
     const subject = `✅ Device Available: ${deviceBrand} ${deviceModel}`;
     const html = `
@@ -99,17 +100,19 @@ export class EmailService {
       <div class="device-info">
         <h3>${deviceBrand} ${deviceModel}</h3>
         ${deviceImageUrl ? `<img src="${deviceImageUrl}" alt="${deviceModel}" class="device-image" />` : ''}
+        <p><strong>Status:</strong> <span style="color: #4CAF50;">✅ Reserved and Ready for Pickup</span></p>
+        ${reservationId ? `<p><strong>Reservation ID:</strong> ${reservationId}</p>` : ''}
         <p><strong>Loan Request ID:</strong> ${loanId}</p>
       </div>
       
       <p><strong>Next Steps:</strong></p>
       <ol>
-        <li>Visit the Campus Device Loan portal to confirm your reservation</li>
-        <li>Pick up your device from the IT Service Desk</li>
+        <li>Visit the IT Service Desk to collect your device</li>
         <li>Bring your student ID for verification</li>
+        <li>Quote your reservation ID: <strong>${reservationId || loanId}</strong></li>
       </ol>
       
-      <p><strong>Important:</strong> Please confirm and collect your device within 24 hours, or it will be offered to the next person on the waitlist.</p>
+      <p><strong>⏰ Important:</strong> This device is reserved for you for the next <strong>24 hours</strong>. If you don't collect it within this time, it will be automatically released to the next person on the waitlist.</p>
       
       <a href="https://campus-device-loan.azurewebsites.net/my-loans" class="cta-button">View My Loans</a>
     </div>
