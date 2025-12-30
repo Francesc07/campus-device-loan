@@ -495,19 +495,74 @@ az deployment group create \
 
 ## Testing
 
-### Run All Tests
+### Quick Start
 
 ```bash
+# All tests
 npm test
-```
 
-### Test Coverage
-
-```bash
+# With coverage report
 npm run test:coverage
+
+# Watch mode (for development)
+npm run test:watch
+
+# Specific test suites
+npm run test:unit              # Unit tests only
+npm run test:integration       # Integration tests only
+npm run test:concurrency       # Concurrency tests only
 ```
+
+### Coverage Thresholds
+
+The project maintains minimum coverage requirements:
+- **Branches**: 70%
+- **Functions**: 70%
+- **Lines**: 70%
+- **Statements**: 70%
 
 Current coverage: **44.59%** statement coverage
+
+### Viewing Coverage Reports
+
+After running `npm run test:coverage`, open `./coverage/index.html` in your browser to view the detailed HTML coverage report.
+
+### CI/CD Integration
+
+Tests run automatically on:
+- Push to `main`, `develop`, or `Develop` branches
+- Pull requests to these branches
+- Manual workflow dispatch
+
+Coverage reports are uploaded to Codecov and attached to GitHub Actions artifacts.
+
+### Test Categories
+
+**Unit Tests** (`tests/unit/`):
+- Domain entity validation and business rules
+- Use case logic with mocked dependencies
+- Authorization checks
+- Error handling scenarios
+
+**Integration Tests** (`tests/integration/`):
+- Complete loan lifecycle workflows (create → activate → return)
+- Multi-user scenarios
+- Event-driven workflows
+- Data consistency verification
+
+**Concurrency Tests** (`tests/concurrency/`):
+- Race conditions on shared resources
+- Concurrent loan creation
+- Idempotency verification
+- High-load scenarios
+
+### Mocking Strategy
+
+All tests use in-memory mocks - no external dependencies required:
+- `MockLoanRepository` - Simulates Cosmos DB operations
+- `MockDeviceSnapshotRepository` - Device catalog simulation
+- `MockLoanEventPublisher` - Event Grid simulation
+- `MockUserService` - Auth0 user service simulation
 
 ### Test Structure
 
@@ -572,6 +627,34 @@ All functions are instrumented with Application Insights for:
 - **Event Processing**: Event Grid trigger success rate
 - **API Response Time**: Average response time per endpoint
 
+### Email Notifications
+
+The service sends email notifications via SendGrid for important events:
+
+**Implemented Notifications:**
+- ✅ **Waitlist Processed**: Automatic notification when device becomes available and waitlisted user is moved to Pending status
+
+**Configuration:**
+
+Add SendGrid settings to each Azure Function App environment:
+
+```bash
+# Using Azure CLI
+az functionapp config appsettings set \
+  --name deviceloan-{env}-ab07-func \
+  --resource-group CampusDeviceLender-{env}-Ab07-rg \
+  --settings \
+    SENDGRID_API_KEY="your-sendgrid-api-key" \
+    SENDGRID_FROM_EMAIL="noreply@campusdeviceloan.com"
+```
+
+Or via Azure Portal: Settings → Configuration → New application setting
+
+**Sender Email Verification:**
+1. Go to SendGrid Dashboard → Settings → Sender Authentication
+2. Verify your sender email (`noreply@campusdeviceloan.com`)
+3. Complete domain authentication for production use
+
 ### Logs
 
 **View logs locally:**
@@ -585,6 +668,10 @@ az monitor app-insights query \
   --app deviceloan-dev-ab07-insights \
   --analytics-query "traces | where timestamp > ago(1h) | project timestamp, message"
 ```
+
+**Centralized Logging:**
+
+For centralized logging across all services (Catalog, Loan, Confirmation, Reservation), see [CENTRAL-LOGGING.md](../../../CENTRAL-LOGGING.md) at the repository root.
 
 ## Troubleshooting
 
